@@ -102,6 +102,11 @@ bool aquecedorAtivo     = false;
 bool coolerAtivo        = false;
 bool ledAtivo           = false;
 
+// Pós-Ventilação do Cooler (Dissipação térmica de 5 minutos após desligar o aquecedor)
+const unsigned long TEMPO_POS_VENTILACAO_MS = 5UL * 60UL * 1000UL; // 300.000 ms (5 minutos)
+unsigned long tempoDesligamentoAquecedor    = 0;
+bool coolerEmPosVentilacao                  = false;
+
 bool sistemaAtivoRemoto = true; // Flag de Parada Geral de Emergência
 
 float temperatura       = 0.0;
@@ -227,21 +232,26 @@ void executarComandoRemoto(const char* rele, const char* action) {
   else if (r == "cooler" || r == "ventilador") {
     if (act == "on") {
       modoAutoCooler = false;
+      coolerEmPosVentilacao = false;
       coolerAtivo = true;
       digitalWrite(PIN_RELE_COOLER, RELAY_ON);
       enviarEventoRele("cooler", "LIGADO", "MANUAL", "Comando manual via painel web");
     } else if (act == "off") {
       modoAutoCooler = false;
+      coolerEmPosVentilacao = false;
       coolerAtivo = false;
       digitalWrite(PIN_RELE_COOLER, RELAY_OFF);
       enviarEventoRele("cooler", "DESLIGADO", "MANUAL", "Comando manual via painel web");
     } else if (act == "auto") {
       modoAutoCooler = true;
-      if (!erroDHT) {
-        if (temperatura >= TEMP_MAX) coolerAtivo = true;
-        else if (temperatura <= TEMP_MIN) coolerAtivo = false;
-        digitalWrite(PIN_RELE_COOLER, coolerAtivo ? RELAY_ON : RELAY_OFF);
+      if (aquecedorAtivo) {
+        coolerAtivo = true;
+      } else if (coolerEmPosVentilacao && (millis() - tempoDesligamentoAquecedor < TEMPO_POS_VENTILACAO_MS)) {
+        coolerAtivo = true;
+      } else {
+        coolerAtivo = false;
       }
+      digitalWrite(PIN_RELE_COOLER, coolerAtivo ? RELAY_ON : RELAY_OFF);
       enviarEventoRele("cooler", coolerAtivo ? "LIGADO" : "DESLIGADO", "AUTOMATICO", "Restaurado modo automatico");
     }
     recuperarLCD();
@@ -283,6 +293,7 @@ void aplicarParadaGeral(bool ativo) {
       modoAutoLed = false;
       aquecedorAtivo = false;
       coolerAtivo = false;
+      coolerEmPosVentilacao = false;
       ledAtivo = false;
       digitalWrite(PIN_RELE_LAMPADA, RELAY_OFF);
       digitalWrite(PIN_RELE_COOLER, RELAY_OFF);
@@ -295,6 +306,7 @@ void aplicarParadaGeral(bool ativo) {
       modoAutoAquec = true;
       modoAutoCooler = true;
       modoAutoLed = true;
+      coolerEmPosVentilacao = false;
       Serial.println(F("[REATIVADO] Sistema Regulador reativado. Retornando ao modo automatico."));
       enviarEventoRele("aquecedor", "DESLIGADO", "AUTOMATICO", "SISTEMA REATIVADO");
       enviarEventoRele("cooler", "DESLIGADO", "AUTOMATICO", "SISTEMA REATIVADO");
@@ -673,41 +685,77 @@ void loop() {
 
       // CONTROLE TÉRMICO AUTOMÁTICO POR HISTERESE
       if (sistemaAtivoRemoto) {
-        // Histerese do Aquecedor (Lâmpada D10)
+        // 1. Histerese do Aquecedor (Lâmpada D10)
         if (modoAutoAquec) {
           if (temperatura <= TEMP_MIN) {
             if (!aquecedorAtivo) {
               aquecedorAtivo = true;
               digitalWrite(PIN_RELE_LAMPADA, RELAY_ON);
               enviarEventoRele("aquecedor", "LIGADO", "AUTOMATICO", "Temperatura <= 26.0 C (Histerese Minima)");
+
+              // Cooler liga simultaneamente com o aquecedor para circulação do ar quente
+              if (modoAutoCooler) {
+                coolerEmPosVentilacao = false;
+                if (!coolerAtivo || digitalRead(PIN_RELE_COOLER) != RELAY_ON) {
+                  coolerAtivo = true;
+                  digitalWrite(PIN_RELE_COOLER, RELAY_ON);
+                  enviarEventoRele("cooler", "LIGADO", "AUTOMATICO", "Ativacao simultanea com o aquecedor (Circulacao)");
+                }
+              }
             }
           } else if (temperatura >= TEMP_MAX) {
             if (aquecedorAtivo || digitalRead(PIN_RELE_LAMPADA) != RELAY_OFF) {
               aquecedorAtivo = false;
               digitalWrite(PIN_RELE_LAMPADA, RELAY_OFF);
               enviarEventoRele("aquecedor", "DESLIGADO", "AUTOMATICO", "Temperatura >= 28.0 C (Histerese Maxima)");
+
+              // Inicia os 5 minutos de pós-ventilação do cooler para dissipar o calor residual
+              if (modoAutoCooler) {
+                coolerEmPosVentilacao = true;
+                tempoDesligamentoAquecedor = millis();
+                if (!coolerAtivo || digitalRead(PIN_RELE_COOLER) != RELAY_ON) {
+                  coolerAtivo = true;
+                  digitalWrite(PIN_RELE_COOLER, RELAY_ON);
+                }
+                enviarEventoRele("cooler", "LIGADO", "AUTOMATICO", "Inicio da pos-ventilacao de 5 min (Dissipacao)");
+              }
             }
           }
         }
 
-        // Histerese do Cooler / Ventilação (D5)
+        // 2. Gerenciamento do Cooler / Ventilação (D5)
         if (modoAutoCooler) {
-          if (temperatura >= TEMP_MAX) {
+          if (aquecedorAtivo) {
+            // Enquanto o aquecedor estiver ligado, o cooler deve permanecer ligado
+            coolerEmPosVentilacao = false;
             if (!coolerAtivo || digitalRead(PIN_RELE_COOLER) != RELAY_ON) {
               coolerAtivo = true;
               digitalWrite(PIN_RELE_COOLER, RELAY_ON);
-              enviarEventoRele("cooler", "LIGADO", "AUTOMATICO", "Temperatura >= 28.0 C (Histerese Maxima)");
             }
-          } else if (temperatura <= TEMP_MIN) {
+          } else if (coolerEmPosVentilacao) {
+            // Verifica se os 5 minutos de pós-ventilação já expiraram
+            if (millis() - tempoDesligamentoAquecedor >= TEMPO_POS_VENTILACAO_MS) {
+              coolerEmPosVentilacao = false;
+              coolerAtivo = false;
+              digitalWrite(PIN_RELE_COOLER, RELAY_OFF);
+              enviarEventoRele("cooler", "DESLIGADO", "AUTOMATICO", "Fim da pos-ventilacao de 5 min (Cooler desligado)");
+            } else {
+              // Garante que o cooler permanece ligado durante os 5 minutos
+              if (!coolerAtivo || digitalRead(PIN_RELE_COOLER) != RELAY_ON) {
+                coolerAtivo = true;
+                digitalWrite(PIN_RELE_COOLER, RELAY_ON);
+              }
+            }
+          } else {
+            // Aquecedor desligado e sem pós-ventilação ativa: cooler deve permanecer desligado
             if (coolerAtivo || digitalRead(PIN_RELE_COOLER) != RELAY_OFF) {
               coolerAtivo = false;
               digitalWrite(PIN_RELE_COOLER, RELAY_OFF);
-              enviarEventoRele("cooler", "DESLIGADO", "AUTOMATICO", "Temperatura <= 26.0 C (Histerese Minima)");
             }
           }
         }
 
-        // Trava de Segurança Térmica Absoluta contra Superaquecimento (>= 30.0 °C)
+        // 3. Trava de Segurança Térmica Absoluta contra Superaquecimento (>= 30.0 °C)
         if (temperatura >= 30.0) {
           if (aquecedorAtivo || digitalRead(PIN_RELE_LAMPADA) != RELAY_OFF) {
             aquecedorAtivo = false;
