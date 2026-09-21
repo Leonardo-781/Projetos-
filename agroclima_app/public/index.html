@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Central Agroclimática — Estufa & Câmara de Fermentação</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857'
+            }
+          },
+          animation: {
+            'spin-slow': 'spin 4s linear infinite',
+            'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+    .toast-slide {
+      animation: slideIn 0.3s ease forwards;
+    }
+    @keyframes slideIn {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-emerald-500 selection:text-white">
+
+  <!-- NOTIFICAÇÕES TOAST FLUTUANTES -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- MODAL DE LOGIN (ÁREA DE ACESSO COM PERMISSÃO) -->
+  <div id="modal-login" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md hidden p-4">
+    <div class="glass-card rounded-2xl p-6 sm:p-7 max-w-sm w-full border border-slate-700 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-bold">
+            <i class="fa-solid fa-lock"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Área de Autenticação</h3>
+            <p class="text-[11px] text-slate-400">Controle Exclusivo de Relés</p>
+          </div>
+        </div>
+        <button onclick="fecharModalLogin()" class="text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- AVISO DE ACESSO RESTRITO -->
+      <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-[11px] text-emerald-300 leading-relaxed">
+        <strong class="font-bold text-white block mb-0.5">Credenciais Iniciais do Sistema:</strong>
+        Email: <span class="font-mono text-emerald-400">admin@agroclima.com</span><br>
+        Senha: <span class="font-mono text-emerald-400">admin123</span>
+      </div>
+
+      <form id="form-login" onsubmit="realizarLogin(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">Email:</label>
+          <input type="email" id="login-email" required value="admin@agroclima.com" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-100 focus:outline-none focus:border-emerald-500 font-medium">
+        </div>
+
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">Senha de Acesso:</label>
+          <input type="password" id="login-senha" required value="admin123" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-100 focus:outline-none focus:border-emerald-500 font-medium">
+        </div>
+
+        <div id="login-erro" class="hidden text-rose-400 text-[11px] font-semibold"></div>
+
+        <div class="pt-2">
+          <button type="submit" id="btn-submit-login" class="w-full py-2.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/50 transition-all flex items-center justify-center gap-2 active:scale-98">
+            <i class="fa-solid fa-right-to-bracket"></i>
+            <span>Entrar e Liberar Controles</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE SIMULAÇÃO / TESTES -->
+  <div id="modal-simulacao" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden p-4">
+    <div class="glass-card rounded-2xl p-6 max-w-md w-full border border-slate-700 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-flask-vial text-emerald-400"></i>
+          Simulador & Injeção de Teste
+        </h3>
+        <button onclick="fecharModalSimulacao()" class="text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400 leading-relaxed">
+        Use este painel para testar os gráficos, gatilhos de relé e alertas mesmo sem os ESP32 físicos conectados.
+      </p>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">Sistema Alvo:</label>
+          <select id="sim-sistema" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-slate-200">
+            <option value="regulador">Câmara de Fermentação (ESP32-C3)</option>
+            <option value="estufa">Estufa Inteligente (ESP32-C3)</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">Temperatura (°C):</label>
+            <input type="number" step="0.1" id="sim-temp" value="27.4" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">Umidade (%):</label>
+            <input type="number" step="0.5" id="sim-umid" value="58.0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2 pt-2">
+          <button onclick="executarSimulacaoAvulsa()" class="w-full py-2.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg transition-all flex items-center justify-center gap-2">
+            <i class="fa-solid fa-paper-plane"></i> Injetar Leitura Agora
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CABEÇALHO SUPERIOR -->
+  <header class="bg-slate-900/80 backdrop-blur-lg border-b border-slate-800 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- LOGO & BRANDING -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-emerald-500/25">
+          <i class="fa-solid fa-leaf text-lg"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold text-white tracking-tight">Central Agroclimática</h1>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">IoT 24/7</span>
+          </div>
+          <p class="text-xs text-slate-400 hidden sm:block">Monitoramento Contínuo & Controle Remoto com Permissão</p>
+        </div>
+      </div>
+
+      <!-- ÁREA DE AUTENTICAÇÃO & AÇÕES DO HEADER -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        
+        <!-- ÁREA DINÂMICA DE USUÁRIO / LOGIN -->
+        <div id="auth-area" class="flex items-center">
+          <!-- Renderizado via JS: Botão [Entrar] OU Card do Usuário Logado -->
+        </div>
+
+        <!-- Botão Atualizar Manual -->
+        <button onclick="atualizacaoManual()" id="btn-refresh" class="text-xs font-semibold p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-all flex items-center gap-1.5" title="Atualizar agora">
+          <i class="fa-solid fa-rotate-right" id="refresh-icon"></i>
+          <span class="hidden sm:inline">Atualizar</span>
+        </button>
+
+        <!-- Relógio Oficial -->
+        <div class="hidden sm:flex items-center space-x-2 text-xs bg-slate-800/90 border border-slate-700/80 px-3 py-1.5 rounded-xl shadow-inner">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span class="font-mono font-medium text-slate-300" id="serverClock">--:--:--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABAS DE NAVEGAÇÃO RESPONSIVAS -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 border-t border-slate-800/60 overflow-x-auto no-scrollbar">
+      <button onclick="switchTab('estufa')" id="tabBtn-estufa" class="py-3 px-4 text-xs sm:text-sm font-semibold border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2 whitespace-nowrap transition-colors">
+        <i class="fa-solid fa-seedling text-emerald-400"></i>
+        <span>Estufa Inteligente (C3)</span>
+      </button>
+      <button onclick="switchTab('regulador')" id="tabBtn-regulador" class="py-3 px-4 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 whitespace-nowrap transition-colors">
+        <i class="fa-solid fa-temperature-half"></i>
+        <span>Câmara de Fermentação (C3)</span>
+      </button>
+      <button onclick="switchTab('logs')" id="tabBtn-logs" class="py-3 px-4 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 whitespace-nowrap transition-colors">
+        <i class="fa-solid fa-clock-rotate-left"></i>
+        <span>Registro de Eventos (Logs)</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- BANNER INFORMATIVO SE NÃO ESTIVER LOGADO -->
+  <div id="unauth-banner" class="bg-amber-500/10 border-b border-amber-500/20 py-2 px-4 sm:px-8 flex items-center justify-between text-xs text-amber-300">
+    <div class="flex items-center gap-2">
+      <i class="fa-solid fa-shield-halved text-amber-400"></i>
+      <span>Você está no <strong>Modo Visualização</strong>. Para acionar relés ou executar a parada de emergência, faça login.</span>
+    </div>
+    <button onclick="abrirModalLogin()" class="font-bold underline hover:text-white whitespace-nowrap ml-2">
+      Fazer Login &rarr;
+    </button>
+  </div>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- ========================================================================= -->
+    <!-- ABA 1: ESTUFA INTELIGENTE (ESP32-C3 SUPER MINI) -->
+    <!-- ========================================================================= -->
+    <section id="tabContent-estufa" class="space-y-6">
+      
+      <!-- BANNER DE STATUS & PARADA GERAL -->
+      <div class="glass-card p-4 sm:p-5 rounded-2xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span id="estufa-online-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Online
+            </span>
+            <span id="estufa-active-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              Sistema Ativo
+            </span>
+            <span class="text-xs text-slate-500" id="estufa-ping">Ping: há 0s</span>
+          </div>
+          <h2 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+            Estufa Inteligente
+            <span class="text-xs font-mono font-normal text-slate-400">ESP32-C3 Super Mini</span>
+          </h2>
+          <p class="text-xs text-slate-400 flex items-center gap-2">
+            <span><i class="fa-solid fa-network-wired text-emerald-400"></i> IP: <strong id="estufa-ip" class="text-slate-300">--</strong></span>
+            <span>•</span>
+            <span>Wi-Fi: <strong id="estufa-wifi" class="text-slate-300">-- dBm</strong></span>
+          </p>
+        </div>
+
+        <!-- BOTÃO MESTRE PARADA GERAL -->
+        <div class="w-full md:w-auto">
+          <button id="estufa-master-btn" onclick="toggleSistemaComAuth('estufa')" class="w-full md:w-auto px-5 py-3 rounded-xl font-bold text-xs sm:text-sm shadow-xl transition-all duration-200 flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 active:scale-98 text-white shadow-rose-950/50">
+            <i class="fa-solid fa-power-off text-base"></i>
+            <span>DESATIVAR ESTUFA (PARADA GERAL)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- CARDS DE SENSORES & CICLO NOTURNO -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <!-- Temperatura -->
+        <div class="glass-card rounded-2xl p-5 shadow-lg relative overflow-hidden">
+          <div class="text-xs font-bold uppercase text-slate-400 tracking-wider flex items-center justify-between">
+            <span>Temperatura</span>
+            <i class="fa-solid fa-temperature-three-quarters text-rose-400 text-sm"></i>
+          </div>
+          <div class="flex items-baseline space-x-2 mt-2">
+            <span class="text-4xl sm:text-5xl font-extrabold text-rose-400" id="estufa-temp">--.-</span>
+            <span class="text-lg text-slate-400">°C</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-check text-emerald-400"></i> Sensor DHT22 no pino GPIO 3
+          </p>
+        </div>
+
+        <!-- Umidade -->
+        <div class="glass-card rounded-2xl p-5 shadow-lg relative overflow-hidden">
+          <div class="text-xs font-bold uppercase text-slate-400 tracking-wider flex items-center justify-between">
+            <span>Umidade Relativa</span>
+            <i class="fa-solid fa-droplet text-cyan-400 text-sm"></i>
+          </div>
+          <div class="flex items-baseline space-x-2 mt-2">
+            <span class="text-4xl sm:text-5xl font-extrabold text-cyan-400" id="estufa-hum">--.-</span>
+            <span class="text-lg text-slate-400">%</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-cloud text-cyan-400"></i> Umidade do microclima interno
+          </p>
+        </div>
+
+        <!-- Ciclo Noturno Automático -->
+        <div class="glass-card rounded-2xl p-5 shadow-lg relative overflow-hidden flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold uppercase text-slate-400 tracking-wider flex items-center justify-between">
+              <span>Ciclo Automático</span>
+              <i class="fa-solid fa-moon text-indigo-400 text-sm"></i>
+            </div>
+            <div class="mt-2 text-sm font-bold text-white flex items-center gap-1.5">
+              <span>17:00</span>
+              <span class="text-xs text-slate-400 font-normal">às</span>
+              <span>05:00</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">Acionamento do relé programado por relógio atômico</p>
+          </div>
+          <div class="w-full bg-slate-800 rounded-full h-2 mt-3 overflow-hidden">
+            <div id="estufa-ciclo-progress" class="bg-gradient-to-r from-indigo-500 to-emerald-400 h-2 rounded-full" style="width: 50%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD DO RELÉ PRINCIPAL -->
+      <div class="glass-card rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-3">
+            <div id="estufa-rele-icon-box" class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 text-lg transition-all">
+              <i class="fa-solid fa-bolt"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white">Relé Principal de Carga (GPIO 4)</h3>
+              <p class="text-xs text-slate-400">Lâmpada / Aquecimento da Estufa (Active-Low)</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span id="estufa-rele-status" class="px-3 py-1 rounded-full text-xs font-bold uppercase bg-slate-800 text-slate-400 border border-slate-700">
+              DESLIGADO
+            </span>
+            <span id="estufa-rele-modo" class="px-3 py-1 rounded-full text-xs font-bold uppercase bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              AUTOMÁTICO
+            </span>
+          </div>
+        </div>
+
+        <!-- BOTÕES DE CONTROLE -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+          <button onclick="enviarComandoComAuth('estufa', 'rele_principal', 'auto')" id="estufa-btn-auto" class="py-3 px-4 rounded-xl font-bold text-xs sm:text-sm bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/40 transition-all flex items-center justify-center gap-2 active:scale-98">
+            <i class="fa-solid fa-robot"></i> Modo Automático
+          </button>
+          <button onclick="enviarComandoComAuth('estufa', 'rele_principal', 'on')" id="estufa-btn-on" class="py-3 px-4 rounded-xl font-bold text-xs sm:text-sm bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white border border-slate-700 hover:border-emerald-500 transition-all flex items-center justify-center gap-2 active:scale-98">
+            <i class="fa-solid fa-power-off"></i> Forçar Ligar
+          </button>
+          <button onclick="enviarComandoComAuth('estufa', 'rele_principal', 'off')" id="estufa-btn-off" class="py-3 px-4 rounded-xl font-bold text-xs sm:text-sm bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white border border-slate-700 hover:border-rose-500 transition-all flex items-center justify-center gap-2 active:scale-98">
+            <i class="fa-solid fa-ban"></i> Forçar Desligar
+          </button>
+        </div>
+      </div>
+
+      <!-- GRÁFICO HISTÓRICO COM PERIODOS E STATS -->
+      <div class="glass-card rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-chart-line text-emerald-400"></i>
+              Série Temporal de Leituras (PostgreSQL)
+            </h3>
+            <p class="text-xs text-slate-400">Amostragem contínua a cada 15 minutos</p>
+          </div>
+
+          <!-- SELETOR DE PERÍODO -->
+          <div class="flex items-center space-x-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+            <button onclick="carregarHistorico('estufa', '1h')" id="btn-chart-estufa-1h" class="px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all">1h</button>
+            <button onclick="carregarHistorico('estufa', '6h')" id="btn-chart-estufa-6h" class="px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all">6h</button>
+            <button onclick="carregarHistorico('estufa', '24h')" id="btn-chart-estufa-24h" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-600 text-white transition-all">24h</button>
+            <button onclick="carregarHistorico('estufa', '7d')" id="btn-chart-estufa-7d" class="px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all">7d</button>
+            <button onclick="carregarHistorico('estufa', '30d')" id="btn-chart-estufa-30d" class="px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all">30d</button>
+          </div>
+        </div>
+
+        <!-- STATS DO PERÍODO -->
+        <div class="grid grid-cols-3 gap-2 text-center text-xs bg-slate-900/50 p-2.5 rounded-xl border border-slate-800/60">
+          <div>
+            <span class="text-slate-500 block text-[10px] uppercase font-bold">Mínima</span>
+            <span id="estufa-stat-min" class="font-bold text-slate-300">-- °C</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[10px] uppercase font-bold">Média</span>
+            <span id="estufa-stat-avg" class="font-bold text-emerald-400">-- °C</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[10px] uppercase font-bold">Máxima</span>
+            <span id="estufa-stat-max" class="font-bold text-rose-400">-- °C</span>
+          </div>
+        </div>
+
+        <div class="h-64 sm:h-72 w-full">
+          <canvas id="chart-estufa"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ========================================================================= -->
+    <!-- ABA 2: CÂMARA DE FERMENTAÇÃO (ESP32-C3 SUPER MINI) -->
+    <!-- ========================================================================= -->
+    <section id="tabContent-regulador" class="space-y-6 hidden">
+
+      <!-- BANNER DE STATUS & PARADA GERAL -->
+      <div class="glass-card p-4 sm:p-5 rounded-2xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span id="regulador-online-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Online
+            </span>
+            <span id="regulador-active-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              Sistema Ativo
+            </span>
+            <span class="text-xs text-slate-500" id="regulador-ping">Ping: há 0s</span>
+          </div>
+          <h2 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+            Câmara de Fermentação
+            <span class="text-xs font-mono font-normal text-slate-400">ESP32-C3 Super Mini (3 Relés)</span>
+          </h2>
+          <p class="text-xs text-slate-400 flex items-center gap-2">
+            <span><i class="fa-solid fa-network-wired text-cyan-400"></i> IP: <strong id="regulador-ip" class="text-slate-300">--</strong></span>
+            <span>•</span>
+            <span>Wi-Fi: <strong id="regulador-wifi" class="text-slate-300">-- dBm</strong></span>
+          </p>
+        </div>
+
+        <!-- BOTÃO MESTRE PARADA GERAL -->
+        <div class="w-full md:w-auto">
+          <button id="regulador-master-btn" onclick="toggleSistemaComAuth('regulador')" class="w-full md:w-auto px-5 py-3 rounded-xl font-bold text-xs sm:text-sm shadow-xl transition-all duration-200 flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 active:scale-98 text-white shadow-rose-950/50">
+            <i class="fa-solid fa-power-off text-base"></i>
+            <span>DESATIVAR CÂMARA (PARADA GERAL)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- CARDS DE SENSORES & GAUGE DE CONFORTO TÉRMICO -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <!-- Temperatura com Gauge de Histerese -->
+        <div class="glass-card rounded-2xl p-5 shadow-lg relative overflow-hidden sm:col-span-2 space-y-3">
+          <div class="flex items-center justify-between text-xs font-bold uppercase text-slate-400 tracking-wider">
+            <span>Temperatura Regulada & Histerese</span>
+            <span id="regulador-zona-status" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              Faixa de Conforto
+            </span>
+          </div>
+
+          <div class="flex items-baseline space-x-3">
+            <span class="text-4xl sm:text-5xl font-extrabold text-amber-400" id="regulador-temp">--.-</span>
+            <span class="text-xl text-slate-400">°C</span>
+            <span class="text-xs text-slate-500">Alvo: 26.0°C a 28.0°C</span>
+          </div>
+
+          <!-- TERMÔMETRO VISUAL DE HISTERESE -->
+          <div class="space-y-1 pt-1">
+            <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+              <span class="text-cyan-400"><i class="fa-solid fa-fire text-amber-500"></i> &le; 26°C (Aquece)</span>
+              <span class="text-emerald-400 font-bold">26°C a 28°C (Equilíbrio)</span>
+              <span class="text-rose-400"><i class="fa-solid fa-fan text-cyan-400"></i> &ge; 28°C (Resfria)</span>
+            </div>
+            <div class="relative w-full h-3 bg-slate-800 rounded-full overflow-hidden flex border border-slate-700/60">
+              <div class="w-1/3 bg-cyan-600/60 h-full"></div>
+              <div class="w-1/3 bg-emerald-500/80 h-full"></div>
+              <div class="w-1/3 bg-rose-600/60 h-full"></div>
+            </div>
+            <div class="w-full relative h-2">
+              <div id="termometro-ponteiro" class="absolute -top-1.5 -ml-1.5 w-3 h-3 rounded-full bg-white shadow-md border border-slate-900 transition-all duration-500" style="left: 50%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Umidade Relativa -->
+        <div class="glass-card rounded-2xl p-5 shadow-lg relative overflow-hidden flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold uppercase text-slate-400 tracking-wider flex items-center justify-between">
+              <span>Umidade do Ar</span>
+              <i class="fa-solid fa-droplet text-cyan-400 text-sm"></i>
+            </div>
+            <div class="flex items-baseline space-x-2 mt-2">
+              <span class="text-4xl sm:text-5xl font-extrabold text-cyan-400" id="regulador-hum">--.-</span>
+              <span class="text-lg text-slate-400">%</span>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Sensor DHT22 (Pino GPIO 0)</p>
+        </div>
+      </div>
+
+      <!-- GRID COM OS 3 RELÉS INDEPENDENTES -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        
+        <!-- RELÉ 1: AQUECEDOR -->
+        <div class="glass-card rounded-2xl p-5 shadow-lg flex flex-col justify-between space-y-4 border border-slate-800 transition-all" id="card-aquec">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold uppercase text-amber-400 tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-fire text-amber-400" id="icon-aquec"></i> Relé 1 • Aquecedor
+              </span>
+              <span id="reg-aquec-status" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase bg-slate-800 text-slate-400 border border-slate-700">OFF</span>
+            </div>
+            <h4 class="text-base font-bold text-white">Lâmpada 220V (GPIO 10)</h4>
+            <p class="text-xs text-slate-400 mt-1">Liga se &le; 26.0°C | Desliga se &ge; 28.0°C</p>
+            <div class="mt-2 text-xs font-medium text-slate-400" id="reg-aquec-modo">Modo: Automático</div>
+          </div>
+          <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800">
+            <button onclick="enviarComandoComAuth('regulador', 'aquecedor', 'auto')" id="reg-btn-aquec-auto" class="py-2 text-xs font-bold rounded-xl bg-blue-600 text-white active:scale-95 transition-all">Auto</button>
+            <button onclick="enviarComandoComAuth('regulador', 'aquecedor', 'on')" id="reg-btn-aquec-on" class="py-2 text-xs font-bold rounded-xl bg-slate-800 text-slate-300 hover:bg-emerald-600 hover:text-white active:scale-95 transition-all">Ligar</button>
+            <button onclick="enviarComandoComAuth('regulador', 'aquecedor', 'off')" id="reg-btn-aquec-off" class="py-2 text-xs font-bold rounded-xl bg-slate-800 text-slate-300 hover:bg-rose-600 hover:text-white active:scale-95 transition-all">Desligar</button>
+          </div>
+        </div>
+
+        <!-- RELÉ 2: COOLER -->
+        <div class="glass-card rounded-2xl p-5 shadow-lg flex flex-col justify-between space-y-4 border border-slate-800 transition-all" id="card-cooler">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold uppercase text-cyan-400 tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-fan text-cyan-400" id="icon-cooler"></i> Relé 2 • Ventilação
+              </span>
+              <span id="reg-cooler-status" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase bg-slate-800 text-slate-400 border border-slate-700">OFF</span>
+            </div>
+            <h4 class="text-base font-bold text-white">Cooler 12V (GPIO 5)</h4>
+            <p class="text-xs text-slate-400 mt-1">Liga se &ge; 28.0°C | Desliga se &le; 26.0°C</p>
+            <div class="mt-2 text-xs font-medium text-slate-400" id="reg-cooler-modo">Modo: Automático</div>
+          </div>
+          <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800">
+            <button onclick="enviarComandoComAuth('regulador', 'cooler', 'auto')" id="reg-btn-cooler-auto" class="py-2 text-xs font-bold rounded-xl bg-blue-600 text-white active:scale-95 transition-all">Auto</button>
+            <button onclick="enviarComandoComAuth('regulador', 'cooler', 'on')" id="reg-btn-cooler-on" class="py-2 text-xs font-bold rounded-xl bg-slate-800 text-slate-300 hover:bg-emerald-600 hover:text-white active:scale-95 transition-all">Ligar</button>
+            <button onclick="enviarComandoComAuth('regulador', 'cooler', 'off')" id="reg-btn-cooler-off" class="py-2 text-xs font-bold rounded-xl bg-slate-800 text-slate-300 hover:bg-rose-600 hover:text-white active:scale-95 transition-all">Desligar</button>
+          </div>
+        </div>
+
+        <!-- RELÉ 3: FOTOPERÍODO -->
+        <div class="glass-card rounded-2xl p-5 shadow-lg flex flex-col justify-between space-y-4 border border-slate-800 transition-all" id="card-led">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold uppercase text-yellow-400 tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-lightbulb text-yellow-400" id="icon-led"></i> Relé 3 • Fotoperíodo
+              </span>
+              <span id="reg-led-status" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase bg-slate-800 text-slate-400 border border-slate-700">OFF</span>
+            </div>
+            <h4 class="text-base font-bold text-white">Fita LED 12V (GPIO 6)</h4>
+            <p class="text-xs text-slate-400 mt-1">Ciclo 12h: Liga 05:00 / Desliga 17:00</p>
+            <div class="mt-2 text-xs font-medium text-slate-400" id="reg-led-modo">Modo: Automático</div>
+          </div>
+          <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800">
+            <button onclick="enviarComandoComAuth('regulador', 'led', 'auto')" id="reg-btn-led-auto" class="py-2 text-xs font-bold rounded-xl bg-blue-600 text-white active:scale-95 transition-all">Auto</button>
+            <button onclick="enviarComandoComAuth('regulador', 'led', 'on')" id="reg-btn-led-on" class="py-2 text-xs font-bold rounded-xl bg-slate-800 text-slate-300 hover:bg-emerald-600 hover:text-white active:scale-95 transition-all">Ligar</button>
+            <button onclick="enviarComandoComAuth('regulador', 'led', 'off')" id="reg-btn-led-off" class="py-2 text-xs font-bold rounded-xl bg-slate-800 text-slate-300 hover:bg-rose-600 hover:text-white active:scale-95 transition-all">Desligar</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- GRÁFICO HISTÓRICO COM PERIODOS E STATS -->
+      <div class="glass-card rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-chart-line text-amber-400"></i>
+              Série Temporal — Câmara de Fermentação (PostgreSQL)
+            </h3>
+            <p class="text-xs text-slate-400">Amostragem contínua a cada 15 minutos</p>
+          </div>
+
+          <!-- SELETOR DE PERÍODO -->
+          <div class="flex items-center space-x-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+            <button onclick="carregarHistorico('regulador', '1h')" id="btn-chart-reg-1h" class="px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all">1h</button>
+            <button onclick="carregarHistorico('regulador', '6h')" id="btn-chart-reg-6h" class="px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all">6h</button>
+            <button onclick="carregarHistorico('regulador', '24h')" id="btn-chart-reg-24h" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-600 text-white transition-all">24h</button>
+            <button onclick="carregarHistorico('regulador', '7d')" id="btn-chart-reg-7d" class="px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all">7d</button>
+            <button onclick="carregarHistorico('regulador', '30d')" id="btn-chart-reg-30d" class="px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all">30d</button>
+          </div>
+        </div>
+
+        <!-- STATS DO PERÍODO -->
+        <div class="grid grid-cols-3 gap-2 text-center text-xs bg-slate-900/50 p-2.5 rounded-xl border border-slate-800/60">
+          <div>
+            <span class="text-slate-500 block text-[10px] uppercase font-bold">Mínima</span>
+            <span id="reg-stat-min" class="font-bold text-slate-300">-- °C</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[10px] uppercase font-bold">Média</span>
+            <span id="reg-stat-avg" class="font-bold text-amber-400">-- °C</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[10px] uppercase font-bold">Máxima</span>
+            <span id="reg-stat-max" class="font-bold text-rose-400">-- °C</span>
+          </div>
+        </div>
+
+        <div class="h-64 sm:h-72 w-full">
+          <canvas id="chart-regulador"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ========================================================================= -->
+    <!-- ABA 3: REGISTRO DE EVENTOS (LOGS DOS RELÉS) -->
+    <!-- ========================================================================= -->
+    <section id="tabContent-logs" class="space-y-6 hidden">
+      <div class="glass-card rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-emerald-400"></i>
+              Auditoria & Histórico de Comutações dos Relés
+            </h3>
+            <p class="text-xs text-slate-400">Registro persistente de todas as ativações automáticas e manuais</p>
+          </div>
+          
+          <!-- FILTROS & AÇÕES -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="relative">
+              <input type="text" id="filtro-busca-logs" oninput="filtrarLogsTabela()" placeholder="Buscar evento..." class="bg-slate-800 border border-slate-700 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 w-36 sm:w-44">
+              <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-500 text-xs"></i>
+            </div>
+
+            <select id="filtro-sistema-logs" onchange="carregarLogs()" class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-200 focus:outline-none focus:border-emerald-500">
+              <option value="all">Todos os Sistemas</option>
+              <option value="estufa">Estufa</option>
+              <option value="regulador">Câmara de Fermentação</option>
+            </select>
+
+            <button onclick="exportarCSV()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-900/30 flex items-center gap-1.5 transition-all active:scale-95">
+              <i class="fa-solid fa-file-csv"></i> <span>Baixar CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- TABELA DE LOGS -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-800/60 text-slate-400 uppercase tracking-wider font-semibold">
+              <tr>
+                <th class="py-3 px-4 rounded-l-xl">Momento</th>
+                <th class="py-3 px-4">Sistema</th>
+                <th class="py-3 px-4">Dispositivo</th>
+                <th class="py-3 px-4">Ação</th>
+                <th class="py-3 px-4">Modo</th>
+                <th class="py-3 px-4">Clima no Instante</th>
+                <th class="py-3 px-4 rounded-r-xl">Motivo do Disparo</th>
+              </tr>
+            </thead>
+            <tbody id="logs-table-body" class="divide-y divide-slate-800/80 text-slate-300">
+              <tr>
+                <td colspan="7" class="text-center py-10 text-slate-500">Carregando eventos...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- RODAPÉ -->
+  <footer class="border-t border-slate-800/80 bg-slate-900/60 py-4 text-center text-xs text-slate-500">
+    Central de Automação IoT • Estufa Inteligente & Regulador Térmico • Servidor 24/7
+  </footer>
+
+  <!-- SCRIPTS DO DASHBOARD -->
+  <script>
+    let activeTab = 'estufa';
+    let chartEstufa = null;
+    let chartRegulador = null;
+    let currentPeriodoEstufa = '24h';
+    let currentPeriodoReg = '24h';
+    let logsCache = [];
+
+    // Gerenciamento de Autenticação
+    let currentUser = null;
+    let authToken = localStorage.getItem('agroclima_token') || null;
+
+    function renderAuthArea() {
+      const authArea = document.getElementById('auth-area');
+      const unauthBanner = document.getElementById('unauth-banner');
+
+      if (currentUser && authToken) {
+        unauthBanner.classList.add('hidden');
+        authArea.innerHTML = `
+          <div class="flex items-center gap-2 bg-slate-800/90 border border-emerald-500/30 px-3 py-1.5 rounded-xl shadow-lg">
+            <div class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
+              <i class="fa-solid fa-user-shield"></i>
+            </div>
+            <div class="hidden sm:block text-left">
+              <div class="text-[11px] font-bold text-white leading-tight">${currentUser.nome}</div>
+              <div class="text-[9px] text-emerald-400 font-semibold uppercase tracking-wider">${currentUser.role === 'admin' ? 'Controle Total' : 'Operador'}</div>
+            </div>
+            <button onclick="realizarLogout()" class="ml-1 text-slate-400 hover:text-rose-400 text-xs p-1" title="Encerrar sessão">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            </button>
+          </div>
+        `;
+      } else {
+        unauthBanner.classList.remove('hidden');
+        authArea.innerHTML = `
+          <button onclick="abrirModalLogin()" class="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/40 border border-emerald-500/30 transition-all flex items-center gap-1.5 active:scale-95">
+            <i class="fa-solid fa-key text-[11px]"></i>
+            <span>Entrar / Login</span>
+          </button>
+        `;
+      }
+    }
+
+    async function verificarSessaoInicial() {
+      if (!authToken) {
+        renderAuthArea();
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          currentUser = data.usuario;
+        } else {
+          authToken = null;
+          currentUser = null;
+          localStorage.removeItem('agroclima_token');
+        }
+      } catch (e) {
+        authToken = null;
+        currentUser = null;
+      }
+      renderAuthArea();
+    }
+
+    function abrirModalLogin() {
+      document.getElementById('login-erro').classList.add('hidden');
+      document.getElementById('modal-login').classList.remove('hidden');
+    }
+
+    function fecharModalLogin() {
+      document.getElementById('modal-login').classList.add('hidden');
+    }
+
+    async function realizarLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const senha = document.getElementById('login-senha').value;
+      const errBox = document.getElementById('login-erro');
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, senha })
+        });
+        const data = await res.json();
+        if (res.ok && data.token) {
+          authToken = data.token;
+          currentUser = data.usuario;
+          localStorage.setItem('agroclima_token', authToken);
+          fecharModalLogin();
+          renderAuthArea();
+          showToast(`Bem-vindo, ${currentUser.nome}! Controles liberados.`, 'success');
+        } else {
+          errBox.innerText = data.error || 'Credenciais inválidas.';
+          errBox.classList.remove('hidden');
+        }
+      } catch (err) {
+        errBox.innerText = 'Falha ao conectar ao servidor.';
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    function realizarLogout() {
+      authToken = null;
+      currentUser = null;
+      localStorage.removeItem('agroclima_token');
+      renderAuthArea();
+      showToast('Sessão encerrada. Controles bloqueados.', 'info');
+    }
+
+    // Interceptador de Comandos com Permissão
+    async function enviarComandoComAuth(sistema, rele, action) {
+      if (!authToken || !currentUser) {
+        showToast('Acesso Restrito: Faça login com permissão para controlar os relés!', 'error');
+        abrirModalLogin();
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/comando', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ sistema, rele, action })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const actLabel = action === 'auto' ? 'Modo Automático restaurado' : action === 'on' ? 'Relé Ligado' : 'Relé Desligado';
+          showToast(`${actLabel} para ${rele}!`, 'success');
+          fetchStatus();
+        } else {
+          if (res.status === 401 || res.status === 403) {
+            showToast('Sessão expirada. Faça login novamente.', 'error');
+            abrirModalLogin();
+          } else {
+            showToast(data.error || 'Erro ao enviar comando', 'error');
+          }
+        }
+      } catch (err) {
+        showToast('Erro de conexão ao enviar comando', 'error');
+      }
+    }
+
+    // Interceptador de Parada Geral com Permissão
+    async function toggleSistemaComAuth(sistema) {
+      if (!authToken || !currentUser) {
+        showToast('Acesso Restrito: Faça login para desativar ou reativar o sistema!', 'error');
+        abrirModalLogin();
+        return;
+      }
+
+      const badge = document.getElementById(`${sistema}-active-badge`);
+      const estaAtivo = badge.innerText.includes('Ativo');
+      const acaoTxt = estaAtivo ? 'DESATIVAR e desligar todos os relés imediatamente' : 'REATIVAR o sistema';
+
+      if (!confirm(`[AUTORIZADO: ${currentUser.nome}]\nTem certeza que deseja ${acaoTxt}?`)) return;
+
+      try {
+        const res = await fetch('/api/sistema/toggle', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ sistema, ativo: !estaAtivo })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const msg = !estaAtivo ? 'Sistema Reativado com Sucesso!' : 'PARADA GERAL ATIVADA: Todos os relés desligados!';
+          showToast(msg, !estaAtivo ? 'success' : 'error');
+          fetchStatus();
+          if (activeTab === 'logs') carregarLogs();
+        } else {
+          showToast(data.error || 'Erro ao alternar sistema', 'error');
+        }
+      } catch (err) {
+        showToast('Erro ao alternar sistema', 'error');
+      }
+    }
+
+    // Sistema de Notificações Toast
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast-slide px-4 py-3 rounded-xl text-xs font-semibold shadow-2xl flex items-center gap-2 pointer-events-auto border transition-all ${
+        type === 'success' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-600/50 shadow-emerald-950/50' :
+        type === 'error' ? 'bg-rose-950/90 text-rose-300 border-rose-600/50 shadow-rose-950/50' :
+        'bg-slate-900/90 text-slate-200 border-slate-700/80'
+      }`;
+
+      const icon = type === 'success' ? 'fa-circle-check text-emerald-400' :
+                   type === 'error' ? 'fa-circle-exclamation text-rose-400' :
+                   'fa-circle-info text-blue-400';
+
+      toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('serverClock').innerText = now.toLocaleTimeString('pt-BR');
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function switchTab(tab) {
+      activeTab = tab;
+      ['estufa', 'regulador', 'logs'].forEach(t => {
+        const content = document.getElementById(`tabContent-${t}`);
+        const btn = document.getElementById(`tabBtn-${t}`);
+        if (t === tab) {
+          content.classList.remove('hidden');
+          btn.className = "py-3 px-4 text-xs sm:text-sm font-semibold border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2 whitespace-nowrap transition-colors";
+        } else {
+          content.classList.add('hidden');
+          btn.className = "py-3 px-4 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 whitespace-nowrap transition-colors";
+        }
+      });
+
+      if (tab === 'estufa') carregarHistorico('estufa', currentPeriodoEstufa);
+      if (tab === 'regulador') carregarHistorico('regulador', currentPeriodoReg);
+      if (tab === 'logs') carregarLogs();
+    }
+
+    async function atualizacaoManual() {
+      const icon = document.getElementById('refresh-icon');
+      icon.classList.add('fa-spin');
+      await fetchStatus();
+      if (activeTab === 'estufa') await carregarHistorico('estufa', currentPeriodoEstufa);
+      if (activeTab === 'regulador') await carregarHistorico('regulador', currentPeriodoReg);
+      if (activeTab === 'logs') await carregarLogs();
+      setTimeout(() => icon.classList.remove('fa-spin'), 600);
+      showToast('Dados sincronizados com sucesso!', 'success');
+    }
+
+    // Consultar status em tempo real a cada 2,5 segundos
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/api/status');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // 1. ATUALIZAR ESTUFA
+        if (data.estufa) {
+          const e = data.estufa;
+          document.getElementById('estufa-temp').innerText = e.temperatura ? Number(e.temperatura).toFixed(1) : '--.-';
+          document.getElementById('estufa-hum').innerText = e.umidade ? Number(e.umidade).toFixed(1) : '--.-';
+          document.getElementById('estufa-ip').innerText = e.ip_local || 'Desconhecido';
+          document.getElementById('estufa-wifi').innerText = e.sinal_wifi ? `${e.sinal_wifi} dBm` : '-- dBm';
+
+          const pingDate = e.ultimo_ping ? new Date(e.ultimo_ping) : null;
+          const pingSeconds = pingDate ? Math.max(0, Math.round((Date.now() - pingDate.getTime()) / 1000)) : 999;
+          document.getElementById('estufa-ping').innerText = `Ping: há ${pingSeconds}s`;
+
+          const bOnline = document.getElementById('estufa-online-badge');
+          if (e.online) {
+            bOnline.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5';
+            bOnline.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Online';
+          } else {
+            bOnline.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1.5';
+            bOnline.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-400"></span> Offline';
+          }
+
+          const bActive = document.getElementById('estufa-active-badge');
+          const mBtn = document.getElementById('estufa-master-btn');
+          if (e.sistema_ativo) {
+            bActive.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30';
+            bActive.innerText = 'Sistema Ativo';
+            mBtn.className = 'w-full md:w-auto px-5 py-3 rounded-xl font-bold text-xs sm:text-sm shadow-xl transition-all duration-200 flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 active:scale-98 text-white shadow-rose-950/50';
+            mBtn.innerHTML = '<i class="fa-solid fa-power-off text-base"></i><span>DESATIVAR ESTUFA (PARADA GERAL)</span>';
+          } else {
+            bActive.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30';
+            bActive.innerText = 'PARADA GERAL ATIVADA';
+            mBtn.className = 'w-full md:w-auto px-5 py-3 rounded-xl font-bold text-xs sm:text-sm shadow-xl transition-all duration-200 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white shadow-emerald-950/50';
+            mBtn.innerHTML = '<i class="fa-solid fa-play text-base"></i><span>REATIVAR ESTUFA</span>';
+          }
+
+          const relesEst = e.reles_estado || {};
+          const relesMod = e.reles_modo || {};
+          const isLigado = Boolean(relesEst.rele_principal);
+          const rStatus = document.getElementById('estufa-rele-status');
+          rStatus.innerText = isLigado ? 'LIGADO' : 'DESLIGADO';
+          rStatus.className = isLigado 
+            ? 'px-3 py-1 rounded-full text-xs font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm shadow-emerald-500/30'
+            : 'px-3 py-1 rounded-full text-xs font-bold uppercase bg-slate-800 text-slate-400 border border-slate-700';
+
+          const rModo = document.getElementById('estufa-rele-modo');
+          const modo = relesMod.rele_principal || 'auto';
+          rModo.innerText = modo === 'auto' ? 'AUTOMÁTICO' : 'MANUAL FORÇADO';
+          rModo.className = modo === 'auto'
+            ? 'px-3 py-1 rounded-full text-xs font-bold uppercase bg-blue-500/20 text-blue-400 border border-blue-500/30'
+            : 'px-3 py-1 rounded-full text-xs font-bold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30';
+
+          const iconBox = document.getElementById('estufa-rele-icon-box');
+          if (isLigado) {
+            iconBox.className = 'w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg shadow-lg shadow-emerald-500/30 animate-pulse-fast';
+          } else {
+            iconBox.className = 'w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 text-lg';
+          }
+        }
+
+        // 2. ATUALIZAR REGULADOR TÉRMICO
+        if (data.regulador) {
+          const r = data.regulador;
+          const tempVal = r.temperatura ? Number(r.temperatura) : 0;
+          document.getElementById('regulador-temp').innerText = tempVal ? tempVal.toFixed(1) : '--.-';
+          document.getElementById('regulador-hum').innerText = r.umidade ? Number(r.umidade).toFixed(1) : '--.-';
+          document.getElementById('regulador-ip').innerText = r.ip_local || 'Desconhecido';
+          document.getElementById('regulador-wifi').innerText = r.sinal_wifi ? `${r.sinal_wifi} dBm` : '-- dBm';
+
+          const pingDate = r.ultimo_ping ? new Date(r.ultimo_ping) : null;
+          const pingSeconds = pingDate ? Math.max(0, Math.round((Date.now() - pingDate.getTime()) / 1000)) : 999;
+          document.getElementById('regulador-ping').innerText = `Ping: há ${pingSeconds}s`;
+
+          const ponteiro = document.getElementById('termometro-ponteiro');
+          const zonaBadge = document.getElementById('regulador-zona-status');
+          let percent = ((tempVal - 24) / (30 - 24)) * 100;
+          percent = Math.max(2, Math.min(98, percent));
+          ponteiro.style.left = `${percent}%`;
+
+          if (tempVal <= 26.0) {
+            zonaBadge.className = 'px-2 py-0.5 rounded-full text-[11px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30';
+            zonaBadge.innerText = 'Zona Fria (Aquecendo)';
+          } else if (tempVal >= 28.0) {
+            zonaBadge.className = 'px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30';
+            zonaBadge.innerText = 'Zona Quente (Resfriando)';
+          } else {
+            zonaBadge.className = 'px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+            zonaBadge.innerText = 'Zona de Conforto Térmico';
+          }
+
+          const bOnline = document.getElementById('regulador-online-badge');
+          if (r.online) {
+            bOnline.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5';
+            bOnline.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Online';
+          } else {
+            bOnline.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1.5';
+            bOnline.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-400"></span> Offline';
+          }
+
+          const bActive = document.getElementById('regulador-active-badge');
+          const mBtn = document.getElementById('regulador-master-btn');
+          if (r.sistema_ativo) {
+            bActive.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30';
+            bActive.innerText = 'Sistema Ativo';
+            mBtn.className = 'w-full md:w-auto px-5 py-3 rounded-xl font-bold text-xs sm:text-sm shadow-xl transition-all duration-200 flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 active:scale-98 text-white shadow-rose-950/50';
+            mBtn.innerHTML = '<i class="fa-solid fa-power-off text-base"></i><span>DESATIVAR CÂMARA (PARADA GERAL)</span>';
+          } else {
+            bActive.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30';
+            bActive.innerText = 'PARADA GERAL ATIVADA';
+            mBtn.className = 'w-full md:w-auto px-5 py-3 rounded-xl font-bold text-xs sm:text-sm shadow-xl transition-all duration-200 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white shadow-emerald-950/50';
+            mBtn.innerHTML = '<i class="fa-solid fa-play text-base"></i><span>REATIVAR CÂMARA</span>';
+          }
+
+          const relesEst = r.reles_estado || {};
+          const relesMod = r.reles_modo || {};
+
+          atualizarRelayVisual('reg-aquec', 'card-aquec', 'icon-aquec', relesEst.aquecedor, relesMod.aquecedor, 'fire', 'text-amber-500');
+          atualizarRelayVisual('reg-cooler', 'card-cooler', 'icon-cooler', relesEst.cooler, relesMod.cooler, 'fan', 'text-cyan-400', true);
+          atualizarRelayVisual('reg-led', 'card-led', 'icon-led', relesEst.led, relesMod.led, 'lightbulb', 'text-yellow-400');
+        }
+      } catch (err) {
+        console.error('Erro ao buscar status:', err);
+      }
+    }
+
+    function atualizarRelayVisual(prefix, cardId, iconId, isLigado, modo, iconName, glowColorClass, isFan = false) {
+      const bStatus = document.getElementById(`${prefix}-status`);
+      const bModo = document.getElementById(`${prefix}-modo`);
+      const card = document.getElementById(cardId);
+      const icon = document.getElementById(iconId);
+
+      const ligado = Boolean(isLigado);
+      bStatus.innerText = ligado ? 'LIGADO' : 'DESLIGADO';
+      bStatus.className = ligado
+        ? 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm shadow-emerald-500/30'
+        : 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase bg-slate-800 text-slate-400 border border-slate-700';
+
+      const m = modo || 'auto';
+      bModo.innerText = `Modo: ${m === 'auto' ? 'Automático' : 'Manual Forçado'}`;
+      bModo.className = `mt-2 text-xs font-medium ${m === 'auto' ? 'text-slate-400' : 'text-amber-400'}`;
+
+      if (ligado) {
+        card.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        card.style.boxShadow = '0 10px 25px -5px rgba(16, 185, 129, 0.15)';
+        if (isFan) icon.classList.add('fa-spin');
+        else icon.classList.add('animate-pulse-fast');
+      } else {
+        card.style.borderColor = '';
+        card.style.boxShadow = '';
+        if (isFan) icon.classList.remove('fa-spin');
+        else icon.classList.remove('animate-pulse-fast');
+      }
+    }
+
+    // Carregar dados históricos e métricas do período para gráficos
+    async function carregarHistorico(sistema, periodo) {
+      if (sistema === 'estufa') currentPeriodoEstufa = periodo;
+      else currentPeriodoReg = periodo;
+
+      ['1h', '6h', '24h', '7d', '30d'].forEach(p => {
+        const btn = document.getElementById(`btn-chart-${sistema === 'estufa' ? 'estufa' : 'reg'}-${p}`);
+        if (btn) {
+          if (p === periodo) {
+            btn.className = "px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-600 text-white transition-all shadow-md";
+          } else {
+            btn.className = "px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all";
+          }
+        }
+      });
+
+      try {
+        const res = await fetch(`/api/historico/${sistema}?periodo=${periodo}`);
+        if (!res.ok) return;
+        const dados = await res.json();
+
+        const labels = dados.map(d => {
+          const dt = new Date(d.criado_em);
+          if (periodo === '1h' || periodo === '6h' || periodo === '24h') {
+            return dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          }
+          return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        });
+        const temps = dados.map(d => Number(d.temperatura));
+        const umis = dados.map(d => Number(d.umidade));
+
+        if (temps.length > 0) {
+          const minT = Math.min(...temps).toFixed(1);
+          const maxT = Math.max(...temps).toFixed(1);
+          const avgT = (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1);
+
+          const prefix = sistema === 'estufa' ? 'estufa' : 'reg';
+          document.getElementById(`${prefix}-stat-min`).innerText = `${minT} °C`;
+          document.getElementById(`${prefix}-stat-avg`).innerText = `${avgT} °C`;
+          document.getElementById(`${prefix}-stat-max`).innerText = `${maxT} °C`;
+        }
+
+        const canvasId = sistema === 'estufa' ? 'chart-estufa' : 'chart-regulador';
+        const ctx = document.getElementById(canvasId).getContext('2d');
+
+        let chartInst = sistema === 'estufa' ? chartEstufa : chartRegulador;
+        if (chartInst) chartInst.destroy();
+
+        const gradTemp = ctx.createLinearGradient(0, 0, 0, 300);
+        gradTemp.addColorStop(0, sistema === 'estufa' ? 'rgba(244, 63, 94, 0.35)' : 'rgba(245, 158, 11, 0.35)');
+        gradTemp.addColorStop(1, 'rgba(244, 63, 94, 0.0)');
+
+        const gradUmi = ctx.createLinearGradient(0, 0, 0, 300);
+        gradUmi.addColorStop(0, 'rgba(56, 189, 248, 0.35)');
+        gradUmi.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
+
+        chartInst = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Temperatura (°C)',
+                data: temps,
+                borderColor: sistema === 'estufa' ? '#f43f5e' : '#f59e0b',
+                backgroundColor: gradTemp,
+                fill: true,
+                borderWidth: 2.5,
+                tension: 0.35,
+                pointRadius: temps.length > 30 ? 0 : 3,
+                pointHoverRadius: 6,
+                yAxisID: 'y'
+              },
+              {
+                label: 'Umidade (%)',
+                data: umis,
+                borderColor: '#38bdf8',
+                backgroundColor: gradUmi,
+                fill: true,
+                borderWidth: 2.5,
+                tension: 0.35,
+                pointRadius: umis.length > 30 ? 0 : 3,
+                pointHoverRadius: 6,
+                yAxisID: 'y1'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+              x: {
+                grid: { color: 'rgba(51, 65, 85, 0.25)' },
+                ticks: { color: '#94a3b8', font: { size: 10 }, maxTicksLimit: 6 }
+              },
+              y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                grid: { color: 'rgba(51, 65, 85, 0.25)' },
+                ticks: { color: '#f43f5e', font: { size: 11 } }
+              },
+              y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                grid: { drawOnChartArea: false },
+                ticks: { color: '#38bdf8', font: { size: 11 } }
+              }
+            },
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: { color: '#cbd5e1', font: { size: 11 }, usePointStyle: true, boxWidth: 8 }
+              },
+              tooltip: {
+                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                titleColor: '#fff',
+                bodyColor: '#cbd5e1',
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderWidth: 1,
+                padding: 10,
+                boxPadding: 4
+              }
+            }
+          }
+        });
+
+        if (sistema === 'estufa') chartEstufa = chartInst;
+        else chartRegulador = chartInst;
+      } catch (err) {
+        console.error('Erro ao carregar historico:', err);
+      }
+    }
+
+    async function carregarLogs() {
+      try {
+        const sistema = document.getElementById('filtro-sistema-logs').value;
+        const res = await fetch(`/api/logs/${sistema}`);
+        if (!res.ok) return;
+        logsCache = await res.json();
+        renderizarTabelaLogs(logsCache);
+      } catch (err) {
+        console.error('Erro ao carregar logs:', err);
+      }
+    }
+
+    function renderizarTabelaLogs(logs) {
+      const tbody = document.getElementById('logs-table-body');
+      if (logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-10 text-slate-500">Nenhum evento registrado encontrado.</td></tr>';
+        return;
+      }
+
+      let html = '';
+      logs.forEach(l => {
+        const dt = new Date(l.criado_em);
+        const tempoRelativo = calcularTempoRelativo(dt);
+        const dataFormatada = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR');
+
+        const isLigado = l.estado === 'LIGADO';
+        const isAuto = l.modo === 'AUTOMATICO';
+        
+        const badgeEstado = isLigado 
+          ? '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1"><i class="fa-solid fa-power-off text-[8px]"></i> LIGOU</span>'
+          : '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 inline-flex items-center gap-1"><i class="fa-solid fa-ban text-[8px]"></i> DESLIGOU</span>';
+
+        const badgeModo = isAuto
+          ? '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 inline-flex items-center gap-1"><i class="fa-solid fa-robot text-[8px]"></i> AUTO</span>'
+          : '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 inline-flex items-center gap-1"><i class="fa-solid fa-hand-pointer text-[8px]"></i> MANUAL</span>';
+
+        const clima = (l.temperatura !== null && l.temperatura !== undefined)
+          ? `${Number(l.temperatura).toFixed(1)}°C • ${Number(l.umidade).toFixed(0)}%`
+          : '--';
+
+        html += `
+          <tr class="hover:bg-slate-800/40 transition-colors">
+            <td class="py-3 px-4 whitespace-nowrap">
+              <span class="font-medium text-slate-200 block">${tempoRelativo}</span>
+              <span class="text-[10px] font-mono text-slate-500">${dataFormatada}</span>
+            </td>
+            <td class="py-3 px-4 font-semibold uppercase text-slate-300">${l.sistema}</td>
+            <td class="py-3 px-4 font-medium text-slate-200">${l.rele}</td>
+            <td class="py-3 px-4">${badgeEstado}</td>
+            <td class="py-3 px-4">${badgeModo}</td>
+            <td class="py-3 px-4 text-slate-400 whitespace-nowrap">${clima}</td>
+            <td class="py-3 px-4 text-slate-300 max-w-xs truncate" title="${l.motivo || ''}">${l.motivo || '--'}</td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    function filtrarLogsTabela() {
+      const termo = document.getElementById('filtro-busca-logs').value.toLowerCase();
+      if (!termo) {
+        renderizarTabelaLogs(logsCache);
+        return;
+      }
+      const filtrados = logsCache.filter(l => 
+        (l.rele && l.rele.toLowerCase().includes(termo)) ||
+        (l.motivo && l.motivo.toLowerCase().includes(termo)) ||
+        (l.estado && l.estado.toLowerCase().includes(termo)) ||
+        (l.modo && l.modo.toLowerCase().includes(termo))
+      );
+      renderizarTabelaLogs(filtrados);
+    }
+
+    function calcularTempoRelativo(data) {
+      const seg = Math.round((Date.now() - data.getTime()) / 1000);
+      if (seg < 60) return `há ${seg}s`;
+      const min = Math.round(seg / 60);
+      if (min < 60) return `há ${min} min`;
+      const h = Math.round(min / 60);
+      if (h < 24) return `há ${h}h`;
+      const dias = Math.round(h / 24);
+      return `há ${dias} dias`;
+    }
+
+    function exportarCSV() {
+      const sistema = document.getElementById('filtro-sistema-logs').value;
+      window.location.href = `/api/exportar-logs/${sistema}`;
+      showToast('Exportando planilha CSV...', 'info');
+    }
+
+    // Modal de Simulação
+    function abrirModalSimulacao() {
+      document.getElementById('modal-simulacao').classList.remove('hidden');
+    }
+    function fecharModalSimulacao() {
+      document.getElementById('modal-simulacao').classList.add('hidden');
+    }
+
+    async function executarSimulacaoAvulsa() {
+      const sistema = document.getElementById('sim-sistema').value;
+      const temperatura = document.getElementById('sim-temp').value;
+      const umidade = document.getElementById('sim-umid').value;
+
+      try {
+        const res = await fetch('/api/simular', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sistema, temperatura, umidade })
+        });
+        if (res.ok) {
+          showToast(`Injeção enviada para ${sistema}!`, 'success');
+          fecharModalSimulacao();
+          fetchStatus();
+          carregarHistorico(sistema, sistema === 'estufa' ? currentPeriodoEstufa : currentPeriodoReg);
+        }
+      } catch (e) {
+        showToast('Erro ao simular', 'error');
+      }
+    }
+
+    // Inicialização
+    verificarSessaoInicial();
+    setInterval(fetchStatus, 2500);
+    fetchStatus();
+    carregarHistorico('estufa', '24h');
+  </script>
+</body>
+</html>

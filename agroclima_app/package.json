@@ -1,0 +1,14 @@
+{
+  "name": "agroclima-automation-server",
+  "version": "1.0.0",
+  "description": "Servidor de Telemetria, Registro em Banco e Controle Remoto para Estufa e Regulador Termico",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "pg": "^8.11.5"
+  }
+}
