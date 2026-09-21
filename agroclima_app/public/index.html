@@ -447,15 +447,15 @@
           <div class="flex items-baseline space-x-3">
             <span class="text-4xl sm:text-5xl font-extrabold text-amber-400" id="regulador-temp">--.-</span>
             <span class="text-xl text-slate-400">°C</span>
-            <span class="text-xs text-slate-500">Alvo: 26.0°C a 28.0°C</span>
+            <span class="text-xs text-slate-500" id="regulador-alvo-texto">Alvo: <span id="regulador-alvo-min">26.0</span>°C a <span id="regulador-alvo-max">28.0</span>°C</span>
           </div>
 
           <!-- TERMÔMETRO VISUAL DE HISTERESE -->
           <div class="space-y-1 pt-1">
             <div class="flex justify-between text-[10px] text-slate-400 font-mono">
-              <span class="text-cyan-400"><i class="fa-solid fa-fire text-amber-500"></i> &le; 26°C (Aquece)</span>
-              <span class="text-emerald-400 font-bold">26°C a 28°C (Equilíbrio)</span>
-              <span class="text-rose-400"><i class="fa-solid fa-fan text-cyan-400"></i> &ge; 28°C (Resfria)</span>
+              <span class="text-cyan-400"><i class="fa-solid fa-fire text-amber-500"></i> &le; <span id="histerese-min-lbl">26.0</span>°C (Aquece)</span>
+              <span class="text-emerald-400 font-bold"><span id="histerese-faixa-lbl">26.0°C a 28.0°C</span> (Equilíbrio)</span>
+              <span class="text-rose-400"><i class="fa-solid fa-fan text-cyan-400"></i> &ge; <span id="histerese-max-lbl">28.0</span>°C (Resfria)</span>
             </div>
             <div class="relative w-full h-3 bg-slate-800 rounded-full overflow-hidden flex border border-slate-700/60">
               <div class="w-1/3 bg-cyan-600/60 h-full"></div>
@@ -497,7 +497,7 @@
               <span id="reg-aquec-status" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase bg-slate-800 text-slate-400 border border-slate-700">OFF</span>
             </div>
             <h4 class="text-base font-bold text-white">Lâmpada 220V (GPIO 10)</h4>
-            <p class="text-xs text-slate-400 mt-1">Liga se &le; 26.0°C | Desliga se &ge; 28.0°C</p>
+            <p class="text-xs text-slate-400 mt-1" id="desc-aquec-setpoints">Liga se &le; 26.0°C | Desliga se &ge; 28.0°C</p>
             <div class="mt-2 text-xs font-medium text-slate-400" id="reg-aquec-modo">Modo: Automático</div>
           </div>
           <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800">
@@ -517,7 +517,7 @@
               <span id="reg-cooler-status" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase bg-slate-800 text-slate-400 border border-slate-700">OFF</span>
             </div>
             <h4 class="text-base font-bold text-white">Cooler 12V (GPIO 5)</h4>
-            <p class="text-xs text-slate-400 mt-1">Liga se &ge; 28.0°C | Desliga se &le; 26.0°C</p>
+            <p class="text-xs text-slate-400 mt-1" id="desc-cooler-setpoints">Ativo com aquecedor + Pós-ventilação de 5 min</p>
             <div class="mt-2 text-xs font-medium text-slate-400" id="reg-cooler-modo">Modo: Automático</div>
           </div>
           <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800">
@@ -547,6 +547,90 @@
           </div>
         </div>
 
+      </div>
+
+      <!-- CARD DE CONFIGURAÇÃO DINÂMICA DE SETPOINTS TÉRMICOS & PÓS-VENTILAÇÃO -->
+      <div class="glass-card rounded-2xl p-5 sm:p-6 shadow-xl space-y-4 border border-slate-800">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg shadow-lg shadow-amber-500/20">
+              <i class="fa-solid fa-sliders"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white flex items-center gap-2">
+                Ajuste de Parâmetros Térmicos & Ventilação
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">NVS / Flash</span>
+              </h3>
+              <p class="text-xs text-slate-400">Configure os setpoints de acionamento sem necessidade de regravar o ESP32</p>
+            </div>
+          </div>
+
+          <div class="text-xs text-slate-400 flex items-center gap-1.5" id="setpoints-meta-info">
+            <i class="fa-solid fa-clock-rotate-left text-slate-500"></i>
+            <span>Sincronizado: <strong id="setpoints-atualizado-em" class="text-slate-300">Carregando...</strong></span>
+          </div>
+        </div>
+
+        <form id="form-setpoints" onsubmit="salvarSetpointsComAuth(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+          <!-- Temperatura Mínima -->
+          <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <label for="cfg-temp-min" class="text-xs font-bold uppercase text-cyan-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-fire text-amber-500"></i> Temp. Mínima
+              </label>
+              <span class="text-[11px] text-slate-400">Liga Aquecedor</span>
+            </div>
+            <div class="relative flex items-center">
+              <input type="number" id="cfg-temp-min" step="0.1" min="10" max="45" required value="26.0" 
+                class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-lg font-extrabold text-white text-center focus:outline-none focus:border-cyan-400 transition-colors">
+              <span class="absolute right-3 text-sm text-slate-400 font-bold pointer-events-none">°C</span>
+            </div>
+            <p class="text-[10px] text-slate-400">Quando a temperatura cai abaixo deste valor, o aquecedor e cooler ligam.</p>
+          </div>
+
+          <!-- Temperatura Máxima -->
+          <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <label for="cfg-temp-max" class="text-xs font-bold uppercase text-rose-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-fan text-cyan-400"></i> Temp. Máxima
+              </label>
+              <span class="text-[11px] text-slate-400">Desliga Aquecedor</span>
+            </div>
+            <div class="relative flex items-center">
+              <input type="number" id="cfg-temp-max" step="0.1" min="12" max="50" required value="28.0" 
+                class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-lg font-extrabold text-white text-center focus:outline-none focus:border-rose-400 transition-colors">
+              <span class="absolute right-3 text-sm text-slate-400 font-bold pointer-events-none">°C</span>
+            </div>
+            <p class="text-[10px] text-slate-400">Quando a temperatura atinge este valor, o aquecedor desliga e inicia a pós-ventilação.</p>
+          </div>
+
+          <!-- Tempo de Pós-Ventilação -->
+          <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <label for="cfg-pos-vent" class="text-xs font-bold uppercase text-emerald-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-stopwatch text-emerald-400"></i> Pós-Ventilação
+              </label>
+              <span class="text-[11px] text-slate-400">Dissipação Térmica</span>
+            </div>
+            <div class="relative flex items-center">
+              <input type="number" id="cfg-pos-vent" step="1" min="0" max="60" required value="5" 
+                class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-lg font-extrabold text-white text-center focus:outline-none focus:border-emerald-400 transition-colors">
+              <span class="absolute right-3 text-sm text-slate-400 font-bold pointer-events-none">min</span>
+            </div>
+            <p class="text-[10px] text-slate-400">Tempo que o cooler permanece ligado para resfriar a lâmpada/aquecedor.</p>
+          </div>
+
+          <!-- BOTÃO SALVAR (SUBMIT) -->
+          <div class="sm:col-span-3 pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <span class="text-xs text-slate-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-shield-halved text-emerald-400"></i> Apenas operadores autenticados podem salvar alterações.
+            </span>
+            <button type="submit" id="btn-salvar-setpoints" class="w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-gradient-to-r from-amber-600 to-emerald-600 hover:from-amber-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-950/50 transition-all flex items-center justify-center gap-2 active:scale-98">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span>Salvar Novos Parâmetros</span>
+            </button>
+          </div>
+        </form>
       </div>
 
       <!-- GRÁFICO HISTÓRICO COM PERIODOS E STATS -->
@@ -845,6 +929,75 @@
       }
     }
 
+    // Interceptador de Alteração de Setpoints Térmicos com Permissão
+    let setpointsIniciado = false;
+    async function salvarSetpointsComAuth(e) {
+      if (e) e.preventDefault();
+      if (!authToken || !currentUser) {
+        showToast('Acesso Restrito: Faça login com permissão para alterar os parâmetros!', 'error');
+        abrirModalLogin();
+        return;
+      }
+
+      const tempMin = parseFloat(document.getElementById('cfg-temp-min').value);
+      const tempMax = parseFloat(document.getElementById('cfg-temp-max').value);
+      const posVent = parseInt(document.getElementById('cfg-pos-vent').value);
+
+      if (isNaN(tempMin) || isNaN(tempMax) || isNaN(posVent)) {
+        showToast('Preencha valores numéricos válidos!', 'error');
+        return;
+      }
+
+      if (tempMin >= tempMax) {
+        showToast('A Temperatura Mínima deve ser menor que a Máxima!', 'error');
+        return;
+      }
+
+      if (tempMin < 10 || tempMin > 45 || tempMax < 12 || tempMax > 50) {
+        showToast('Temperaturas fora da faixa operacional segura (10°C a 50°C)!', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btn-salvar-setpoints');
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Salvando...</span>';
+
+      try {
+        const res = await fetch('/api/setpoints', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({
+            sistema: 'regulador',
+            temp_min: tempMin,
+            temp_max: tempMax,
+            pos_ventilacao_min: posVent
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`Parâmetros salvos com sucesso! (Min: ${tempMin.toFixed(1)}°C | Max: ${tempMax.toFixed(1)}°C)`, 'success');
+          fetchStatus();
+          if (activeTab === 'logs') carregarLogs();
+        } else {
+          if (res.status === 401 || res.status === 403) {
+            showToast('Sessão expirada. Faça login novamente.', 'error');
+            abrirModalLogin();
+          } else {
+            showToast(data.error || 'Erro ao salvar setpoints', 'error');
+          }
+        }
+      } catch (err) {
+        showToast('Erro de conexão ao salvar setpoints', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    }
+
     // Sistema de Notificações Toast
     function showToast(message, type = 'info') {
       const container = document.getElementById('toast-container');
@@ -985,18 +1138,67 @@
           const pingSeconds = pingDate ? Math.max(0, Math.round((Date.now() - pingDate.getTime()) / 1000)) : 999;
           document.getElementById('regulador-ping').innerText = `Ping: há ${pingSeconds}s`;
 
+          let tMin = 26.0;
+          let tMax = 28.0;
+          let pVent = 5;
+
+          if (r.setpoints) {
+            const sp = r.setpoints;
+            tMin = Number(sp.temp_min) || 26.0;
+            tMax = Number(sp.temp_max) || 28.0;
+            pVent = parseInt(sp.pos_ventilacao_min) !== undefined ? parseInt(sp.pos_ventilacao_min) : 5;
+
+            const elMin = document.getElementById('regulador-alvo-min');
+            const elMax = document.getElementById('regulador-alvo-max');
+            if (elMin) elMin.innerText = tMin.toFixed(1);
+            if (elMax) elMax.innerText = tMax.toFixed(1);
+
+            const hMin = document.getElementById('histerese-min-lbl');
+            const hFaixa = document.getElementById('histerese-faixa-lbl');
+            const hMax = document.getElementById('histerese-max-lbl');
+            if (hMin) hMin.innerText = tMin.toFixed(1);
+            if (hFaixa) hFaixa.innerText = `${tMin.toFixed(1)}°C a ${tMax.toFixed(1)}°C`;
+            if (hMax) hMax.innerText = tMax.toFixed(1);
+
+            const descAq = document.getElementById('desc-aquec-setpoints');
+            if (descAq) descAq.innerHTML = `Liga se &le; ${tMin.toFixed(1)}°C | Desliga se &ge; ${tMax.toFixed(1)}°C`;
+
+            const descCl = document.getElementById('desc-cooler-setpoints');
+            if (descCl) descCl.innerHTML = `Ativo com aquecedor + Pós-ventilação de ${pVent} min`;
+
+            const inpMin = document.getElementById('cfg-temp-min');
+            const inpMax = document.getElementById('cfg-temp-max');
+            const inpVent = document.getElementById('cfg-pos-vent');
+
+            if (!setpointsIniciado) {
+              if (inpMin) inpMin.value = tMin.toFixed(1);
+              if (inpMax) inpMax.value = tMax.toFixed(1);
+              if (inpVent) inpVent.value = pVent;
+              setpointsIniciado = true;
+            }
+
+            const metaInfo = document.getElementById('setpoints-atualizado-em');
+            if (metaInfo) {
+              const dt = sp.atualizado_em ? new Date(sp.atualizado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Padrão';
+              const por = sp.atualizado_por ? ` por ${sp.atualizado_por}` : '';
+              metaInfo.innerText = `${dt}${por}`;
+            }
+          }
+
           const ponteiro = document.getElementById('termometro-ponteiro');
           const zonaBadge = document.getElementById('regulador-zona-status');
-          let percent = ((tempVal - 24) / (30 - 24)) * 100;
+          const spanMin = tMin - 2.0;
+          const spanMax = tMax + 2.0;
+          let percent = ((tempVal - spanMin) / (spanMax - spanMin)) * 100;
           percent = Math.max(2, Math.min(98, percent));
           ponteiro.style.left = `${percent}%`;
 
-          if (tempVal <= 26.0) {
+          if (tempVal <= tMin) {
             zonaBadge.className = 'px-2 py-0.5 rounded-full text-[11px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30';
-            zonaBadge.innerText = 'Zona Fria (Aquecendo)';
-          } else if (tempVal >= 28.0) {
+            zonaBadge.innerText = `Zona Fria (Aquecendo \u2264 ${tMin.toFixed(1)}°C)`;
+          } else if (tempVal >= tMax) {
             zonaBadge.className = 'px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30';
-            zonaBadge.innerText = 'Zona Quente (Resfriando)';
+            zonaBadge.innerText = `Zona Quente (Resfriando \u2265 ${tMax.toFixed(1)}°C)`;
           } else {
             zonaBadge.className = 'px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
             zonaBadge.innerText = 'Zona de Conforto Térmico';

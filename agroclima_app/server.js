@@ -134,6 +134,21 @@ async function initDb() {
           role VARCHAR(30) DEFAULT 'admin',
           criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS agroclima_configuracoes (
+          sistema VARCHAR(32) PRIMARY KEY,
+          temp_min NUMERIC(4, 1) NOT NULL DEFAULT 26.0,
+          temp_max NUMERIC(4, 1) NOT NULL DEFAULT 28.0,
+          pos_ventilacao_min INTEGER NOT NULL DEFAULT 5,
+          atualizado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+          atualizado_por VARCHAR(100) DEFAULT 'Sistema'
+      );
+
+      INSERT INTO agroclima_configuracoes (sistema, temp_min, temp_max, pos_ventilacao_min, atualizado_por)
+      VALUES 
+        ('regulador', 26.0, 28.0, 5, 'Padrao'),
+        ('estufa', 22.0, 28.0, 0, 'Padrao')
+      ON CONFLICT (sistema) DO NOTHING;
     `);
 
     // Cria usuário administrador padrão caso não exista
@@ -303,10 +318,23 @@ app.post('/api/telemetria', async (req, res) => {
       console.log(`[HISTORICO 15 MIN] Gravada leitura para ${sistema}: ${tempNum}°C, ${umiNum}%`);
     }
 
+    // 3. RECUPERA SETPOINTS CONFIGURADOS PARA SINCRONIZAR COM O ESP32
+    const cfgRes = await pool.query(`
+      SELECT temp_min, temp_max, pos_ventilacao_min 
+      FROM agroclima_configuracoes 
+      WHERE sistema = $1
+    `, [sistema]);
+    const setpoints = cfgRes.rows[0] ? {
+      temp_min: parseFloat(cfgRes.rows[0].temp_min),
+      temp_max: parseFloat(cfgRes.rows[0].temp_max),
+      pos_ventilacao_min: parseInt(cfgRes.rows[0].pos_ventilacao_min)
+    } : (sistema === 'regulador' ? { temp_min: 26.0, temp_max: 28.0, pos_ventilacao_min: 5 } : { temp_min: 22.0, temp_max: 28.0, pos_ventilacao_min: 0 });
+
     return res.json({
       status: 'ok',
       sistema_ativo: sistemaAtivo,
-      comandos: comandosParaEnviar
+      comandos: comandosParaEnviar,
+      setpoints
     });
   } catch (err) {
     console.error('[TELEMETRIA] Erro ao processar:', err);
@@ -392,19 +420,149 @@ app.get('/api/status', async (req, res) => {
       FROM agroclima_status_atual
     `);
 
+    const cfgResult = await pool.query(`
+      SELECT sistema, temp_min, temp_max, pos_ventilacao_min, atualizado_em, atualizado_por 
+      FROM agroclima_configuracoes
+    `);
+    const configs = {};
+    cfgResult.rows.forEach(c => {
+      configs[c.sistema] = {
+        temp_min: parseFloat(c.temp_min),
+        temp_max: parseFloat(c.temp_max),
+        pos_ventilacao_min: parseInt(c.pos_ventilacao_min),
+        atualizado_em: c.atualizado_em,
+        atualizado_por: c.atualizado_por
+      };
+    });
+
     const data = {
-      estufa: null,
-      regulador: null
+      estufa: configs.estufa ? { setpoints: configs.estufa } : null,
+      regulador: configs.regulador ? { setpoints: configs.regulador } : null
     };
 
     result.rows.forEach(r => {
-      data[r.sistema] = r;
+      data[r.sistema] = {
+        ...r,
+        setpoints: configs[r.sistema] || null
+      };
     });
 
     return res.json(data);
   } catch (err) {
     console.error('[STATUS] Erro:', err);
     return res.status(500).json({ error: 'Erro ao consultar status' });
+  }
+});
+
+// 3.1 Consultar setpoints de um sistema (Público)
+app.get('/api/setpoints/:sistema', async (req, res) => {
+  try {
+    const { sistema } = req.params;
+    const result = await pool.query(`
+      SELECT sistema, temp_min, temp_max, pos_ventilacao_min, atualizado_em, atualizado_por
+      FROM agroclima_configuracoes
+      WHERE sistema = $1
+    `, [sistema]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Configurações não encontradas para este sistema' });
+    }
+
+    const row = result.rows[0];
+    return res.json({
+      status: 'ok',
+      sistema: row.sistema,
+      temp_min: parseFloat(row.temp_min),
+      temp_max: parseFloat(row.temp_max),
+      pos_ventilacao_min: parseInt(row.pos_ventilacao_min),
+      atualizado_em: row.atualizado_em,
+      atualizado_por: row.atualizado_por
+    });
+  } catch (err) {
+    console.error('[SETPOINTS GET] Erro:', err);
+    return res.status(500).json({ error: 'Erro ao consultar setpoints' });
+  }
+});
+
+// 3.2 Alterar setpoints de um sistema - PROTEGIDO COM AUTENTICAÇÃO JWT
+app.post('/api/setpoints', authenticateToken, async (req, res) => {
+  try {
+    const { sistema, temp_min, temp_max, pos_ventilacao_min } = req.body;
+
+    if (!sistema) {
+      return res.status(400).json({ error: 'Campo sistema obrigatório' });
+    }
+
+    const tMin = parseFloat(temp_min);
+    const tMax = parseFloat(temp_max);
+    const posVent = parseInt(pos_ventilacao_min !== undefined ? pos_ventilacao_min : 5);
+
+    if (isNaN(tMin) || isNaN(tMax)) {
+      return res.status(400).json({ error: 'Valores de temperatura inválidos' });
+    }
+
+    if (tMin < 10.0 || tMin > 45.0 || tMax < 12.0 || tMax > 50.0) {
+      return res.status(400).json({ error: 'Temperatura fora dos limites permitidos (10°C a 50°C)' });
+    }
+
+    if (tMin >= tMax) {
+      return res.status(400).json({ error: 'Temperatura mínima deve ser estritamente menor que a máxima' });
+    }
+
+    if (posVent < 0 || posVent > 60) {
+      return res.status(400).json({ error: 'Tempo de pós-ventilação deve estar entre 0 e 60 minutos' });
+    }
+
+    const operadorInfo = req.user ? `${req.user.nome} (${req.user.role})` : 'Usuário Autenticado';
+
+    await pool.query(`
+      INSERT INTO agroclima_configuracoes (sistema, temp_min, temp_max, pos_ventilacao_min, atualizado_em, atualizado_por)
+      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5)
+      ON CONFLICT (sistema) DO UPDATE SET
+        temp_min = EXCLUDED.temp_min,
+        temp_max = EXCLUDED.temp_max,
+        pos_ventilacao_min = EXCLUDED.pos_ventilacao_min,
+        atualizado_em = CURRENT_TIMESTAMP,
+        atualizado_por = EXCLUDED.atualizado_por
+    `, [sistema, tMin, tMax, posVent, operadorInfo]);
+
+    // Registra evento de auditoria
+    const motivoLog = `Setpoints ajustados: Min: ${tMin}°C, Max: ${tMax}°C, Pós-Vent: ${posVent} min por ${operadorInfo}`;
+    await pool.query(`
+      INSERT INTO agroclima_eventos_reles (sistema, rele, estado, modo, motivo)
+      VALUES ($1, 'setpoints', 'CONFIGURADO', 'MANUAL', $2)
+    `, [sistema, motivoLog]);
+
+    console.log(`[SETPOINTS] ${sistema.toUpperCase()} atualizado por ${operadorInfo}: Min ${tMin}°C, Max ${tMax}°C, Pós-Vent ${posVent}min`);
+
+    // DISPARO IMEDIATO AO ESP32 (Sub-segundo se na mesma rede Wi-Fi/LAN)
+    try {
+      const rowRes = await pool.query('SELECT ip_local FROM agroclima_status_atual WHERE sistema = $1', [sistema]);
+      const espIp = rowRes.rows[0]?.ip_local;
+      if (espIp && espIp !== 'Desconhecido' && espIp !== '--') {
+        fetch(`http://${espIp}/api/setpoints`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ temp_min: tMin, temp_max: tMax, pos_ventilacao_min: posVent }),
+          signal: AbortSignal.timeout(1200)
+        }).catch(() => {});
+      }
+    } catch (e) {}
+
+    return res.json({
+      status: 'ok',
+      message: 'Parâmetros térmicos atualizados com sucesso',
+      config: {
+        sistema,
+        temp_min: tMin,
+        temp_max: tMax,
+        pos_ventilacao_min: posVent,
+        atualizado_por: operadorInfo
+      }
+    });
+  } catch (err) {
+    console.error('[SETPOINTS POST] Erro:', err);
+    return res.status(500).json({ error: 'Erro ao salvar setpoints' });
   }
 });
 

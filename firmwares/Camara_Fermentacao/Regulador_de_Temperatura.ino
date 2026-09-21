@@ -28,6 +28,7 @@
 #include <DHT.h>
 #include <time.h>
 #include <ArduinoJson.h>
+#include <Preferences.h>
 
 // =========================================================================================
 // CONFIGURAÇÃO DO DISPLAY LCD 20x4 (I2C)
@@ -76,20 +77,23 @@ const int   DAYLIGHT_OFFSET_SEC = 0;
 #define RELAY_OFF  LOW
 
 // =========================================================================================
-// PARÂMETROS DE CONTROLE TÉRMICO E FOTOPERÍODO
+// PARÂMETROS DINÂMICOS DE CONTROLE TÉRMICO E FOTOPERÍODO (NVS FLASH)
 // =========================================================================================
-const float TEMP_MIN = 26.0;   // Liga aquecedor / Desliga cooler
-const float TEMP_MAX = 28.0;   // Desliga aquecedor / Liga cooler
+float tempMin                  = 26.0f; // Liga aquecedor
+float tempMax                  = 28.0f; // Desliga aquecedor e inicia pós-ventilação
+int   posVentilacaoMin         = 5;     // Duração da pós-ventilação em minutos
+unsigned long tempoPosVentilacaoMs = 5UL * 60UL * 1000UL; // Duração calculada em ms
 
 const int HORA_LIGA_LED    = 5;   // 05:00 da manhã
 const int HORA_DESLIGA_LED = 17;  // 17:00 da tarde (12h de luz)
 
 // =========================================================================================
 // OBJETOS E INSTÂNCIAS
-// =========================================================================
+// =========================================================================================
 LiquidCrystal_I2C lcd(LCD_ADDRESS, LCD_COLS, LCD_ROWS);
 DHT dht(PIN_DHT, DHTTYPE);
 WebServer server(80);
+Preferences preferences;
 
 // =========================================================================================
 // VARIÁVEIS DE ESTADO
@@ -102,8 +106,7 @@ bool aquecedorAtivo     = false;
 bool coolerAtivo        = false;
 bool ledAtivo           = false;
 
-// Pós-Ventilação do Cooler (Dissipação térmica de 5 minutos após desligar o aquecedor)
-const unsigned long TEMPO_POS_VENTILACAO_MS = 5UL * 60UL * 1000UL; // 300.000 ms (5 minutos)
+// Pós-Ventilação do Cooler (Dissipação térmica de calor residual)
 unsigned long tempoDesligamentoAquecedor    = 0;
 bool coolerEmPosVentilacao                  = false;
 
@@ -126,6 +129,7 @@ void enviarEventoRele(const char* rele, const char* estado, const char* modo, co
 void enviarTelemetriaServidor();
 void executarComandoRemoto(const char* rele, const char* action);
 void aplicarParadaGeral(bool ativo);
+void salvarNovosSetpoints(float tMin, float tMax, int pVent);
 int enviarHttpComFallback(const String &endpoint, const String &json, String &payloadOut);
 
 // =========================================================================
@@ -188,6 +192,31 @@ void enviarEventoRele(const char* rele, const char* estado, const char* modo, co
 }
 
 // =========================================================================
+// GRAVAÇÃO E GESTÃO DE SETPOINTS NA MEMÓRIA FLASH NVS (PREFERENCES)
+// =========================================================================
+void salvarNovosSetpoints(float tMin, float tMax, int pVent) {
+  if (tMin < 10.0f || tMin > 45.0f || tMax < 12.0f || tMax > 50.0f || tMin >= tMax) return;
+  if (pVent < 0 || pVent > 60) return;
+
+  bool alterado = (abs(tempMin - tMin) > 0.05f || abs(tempMax - tMax) > 0.05f || posVentilacaoMin != pVent);
+  if (!alterado) return;
+
+  tempMin = tMin;
+  tempMax = tMax;
+  posVentilacaoMin = pVent;
+  tempoPosVentilacaoMs = (unsigned long)posVentilacaoMin * 60UL * 1000UL;
+
+  preferences.begin("agro_cfg", false);
+  preferences.putFloat("temp_min", tempMin);
+  preferences.putFloat("temp_max", tempMax);
+  preferences.putInt("pos_vent", posVentilacaoMin);
+  preferences.end();
+
+  Serial.printf("[NVS] Novos Setpoints Salvos -> Min: %.1f C | Max: %.1f C | Pos-Vent: %d min (%lu ms)\n",
+                tempMin, tempMax, posVentilacaoMin, tempoPosVentilacaoMs);
+}
+
+// =========================================================================
 // EXECUTOR DE COMANDOS REMOTOS (INDIVIDUAIS POR RELÉ)
 // =========================================================================
 void executarComandoRemoto(const char* rele, const char* action) {
@@ -220,8 +249,8 @@ void executarComandoRemoto(const char* rele, const char* action) {
     } else if (act == "auto") {
       modoAutoAquec = true;
       if (!erroDHT) {
-        if (temperatura <= TEMP_MIN) aquecedorAtivo = true;
-        else if (temperatura >= TEMP_MAX) aquecedorAtivo = false;
+        if (temperatura <= tempMin) aquecedorAtivo = true;
+        else if (temperatura >= tempMax) aquecedorAtivo = false;
         digitalWrite(PIN_RELE_LAMPADA, aquecedorAtivo ? RELAY_ON : RELAY_OFF);
       }
       enviarEventoRele("aquecedor", aquecedorAtivo ? "LIGADO" : "DESLIGADO", "AUTOMATICO", "Restaurado modo automatico");
@@ -246,7 +275,7 @@ void executarComandoRemoto(const char* rele, const char* action) {
       modoAutoCooler = true;
       if (aquecedorAtivo) {
         coolerAtivo = true;
-      } else if (coolerEmPosVentilacao && (millis() - tempoDesligamentoAquecedor < TEMPO_POS_VENTILACAO_MS)) {
+      } else if (coolerEmPosVentilacao && (millis() - tempoDesligamentoAquecedor < tempoPosVentilacaoMs)) {
         coolerAtivo = true;
       } else {
         coolerAtivo = false;
@@ -363,6 +392,17 @@ void enviarTelemetriaServidor() {
           const char* r = cmd["rele"];
           const char* a = cmd["action"];
           executarComandoRemoto(r, a);
+        }
+      }
+
+      // 3. Processa Ajuste Dinâmico de Setpoints (NVS Flash)
+      if (doc.containsKey("setpoints")) {
+        JsonObject sp = doc["setpoints"].as<JsonObject>();
+        if (sp.containsKey("temp_min") && sp.containsKey("temp_max")) {
+          float sMin = sp["temp_min"].as<float>();
+          float sMax = sp["temp_max"].as<float>();
+          int sVent = sp.containsKey("pos_ventilacao_min") ? sp["pos_ventilacao_min"].as<int>() : 5;
+          salvarNovosSetpoints(sMin, sMax, sVent);
         }
       }
     }
@@ -484,6 +524,9 @@ void handleStatus() {
   json += "\"cooler\":" + String(coolerAtivo ? "true" : "false") + ",";
   json += "\"led\":" + String(ledAtivo ? "true" : "false") + ",";
   json += "\"sistemaAtivo\":" + String(sistemaAtivoRemoto ? "true" : "false") + ",";
+  json += "\"temp_min\":" + String(tempMin, 1) + ",";
+  json += "\"temp_max\":" + String(tempMax, 1) + ",";
+  json += "\"pos_ventilacao_min\":" + String(posVentilacaoMin) + ",";
   json += "\"ip\":\"" + WiFi.localIP().toString() + "\"";
   json += "}";
   server.send(200, "application/json", json);
@@ -535,6 +578,40 @@ void handleApiToggle() {
     }
   }
   server.send(400, "application/json", "{\"error\":\"parametro sistema_ativo obrigatorio\"}");
+}
+
+// Endpoint de Configuração Dinâmica de Setpoints via HTTP Local Direto
+void handleApiSetpoints() {
+  float sMin = tempMin;
+  float sMax = tempMax;
+  int sVent = posVentilacaoMin;
+
+  if (server.hasArg("plain")) {
+    String body = server.arg("plain");
+#if ARDUINOJSON_VERSION_MAJOR >= 7
+    JsonDocument doc;
+#else
+    StaticJsonDocument<256> doc;
+#endif
+    if (!deserializeJson(doc, body)) {
+      if (doc.containsKey("temp_min")) sMin = doc["temp_min"].as<float>();
+      if (doc.containsKey("temp_max")) sMax = doc["temp_max"].as<float>();
+      if (doc.containsKey("pos_ventilacao_min")) sVent = doc["pos_ventilacao_min"].as<int>();
+    }
+  } else {
+    if (server.hasArg("temp_min")) sMin = server.arg("temp_min").toFloat();
+    if (server.hasArg("temp_max")) sMax = server.arg("temp_max").toFloat();
+    if (server.hasArg("pos_ventilacao_min")) sVent = server.arg("pos_ventilacao_min").toInt();
+  }
+
+  if (sMin < 10.0f || sMin > 45.0f || sMax < 12.0f || sMax > 50.0f || sMin >= sMax || sVent < 0 || sVent > 60) {
+    server.send(400, "application/json", "{\"error\":\"parametros de temperatura ou ventilacao invalidos\"}");
+    return;
+  }
+
+  salvarNovosSetpoints(sMin, sMax, sVent);
+  String resp = "{\"status\":\"ok\",\"temp_min\":" + String(tempMin, 1) + ",\"temp_max\":" + String(tempMax, 1) + ",\"pos_ventilacao_min\":" + String(posVentilacaoMin) + "}";
+  server.send(200, "application/json", resp);
 }
 
 // =========================================================================
@@ -595,7 +672,7 @@ void setup() {
   Serial.println(F("Central Agroclimatica - Camara de Fermentacao (ESP32-C3)"));
   Serial.println(F("======================================================="));
 
-  // 1. Configuração dos Pinos de Relé (Active-Low: Inicia Desligado)
+  // 1. Configuração dos Pinos de Relé (Active-High: Inicia Desligado)
   pinMode(PIN_RELE_LAMPADA, OUTPUT);
   pinMode(PIN_RELE_COOLER, OUTPUT);
   pinMode(PIN_RELE_LED, OUTPUT);
@@ -603,6 +680,24 @@ void setup() {
   digitalWrite(PIN_RELE_LAMPADA, RELAY_OFF);
   digitalWrite(PIN_RELE_COOLER, RELAY_OFF);
   digitalWrite(PIN_RELE_LED, RELAY_OFF);
+
+  // 1.1 Carregamento dos Setpoints da Memória Flash NVS (Preferences)
+  preferences.begin("agro_cfg", false);
+  tempMin          = preferences.getFloat("temp_min", 26.0f);
+  tempMax          = preferences.getFloat("temp_max", 28.0f);
+  posVentilacaoMin = preferences.getInt("pos_vent", 5);
+  preferences.end();
+
+  if (tempMin < 10.0f || tempMin > 45.0f || tempMax < 12.0f || tempMax > 50.0f || tempMin >= tempMax) {
+    tempMin = 26.0f;
+    tempMax = 28.0f;
+  }
+  if (posVentilacaoMin < 0 || posVentilacaoMin > 60) {
+    posVentilacaoMin = 5;
+  }
+  tempoPosVentilacaoMs = (unsigned long)posVentilacaoMin * 60UL * 1000UL;
+  Serial.printf("[NVS FLASH] Setpoints Inicializados -> Min: %.1f C | Max: %.1f C | Pos-Vent: %d min (%lu ms)\n",
+                tempMin, tempMax, posVentilacaoMin, tempoPosVentilacaoMs);
 
   // 2. Inicialização do LCD 20x4
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
@@ -645,6 +740,7 @@ void setup() {
   server.on("/dados", handleStatus);
   server.on("/api/comando", HTTP_POST, handleApiComando);
   server.on("/api/sistema/toggle", HTTP_POST, handleApiToggle);
+  server.on("/api/setpoints", HTTP_POST, handleApiSetpoints);
   server.begin();
 
   Serial.println(F("Servidor Web HTTP local na porta 80 ativo."));
@@ -687,11 +783,12 @@ void loop() {
       if (sistemaAtivoRemoto) {
         // 1. Histerese do Aquecedor (Lâmpada D10)
         if (modoAutoAquec) {
-          if (temperatura <= TEMP_MIN) {
+          if (temperatura <= tempMin) {
             if (!aquecedorAtivo) {
               aquecedorAtivo = true;
               digitalWrite(PIN_RELE_LAMPADA, RELAY_ON);
-              enviarEventoRele("aquecedor", "LIGADO", "AUTOMATICO", "Temperatura <= 26.0 C (Histerese Minima)");
+              String mot = "Temperatura <= " + String(tempMin, 1) + " C (Histerese Minima)";
+              enviarEventoRele("aquecedor", "LIGADO", "AUTOMATICO", mot.c_str());
 
               // Cooler liga simultaneamente com o aquecedor para circulação do ar quente
               if (modoAutoCooler) {
@@ -703,13 +800,14 @@ void loop() {
                 }
               }
             }
-          } else if (temperatura >= TEMP_MAX) {
+          } else if (temperatura >= tempMax) {
             if (aquecedorAtivo || digitalRead(PIN_RELE_LAMPADA) != RELAY_OFF) {
               aquecedorAtivo = false;
               digitalWrite(PIN_RELE_LAMPADA, RELAY_OFF);
-              enviarEventoRele("aquecedor", "DESLIGADO", "AUTOMATICO", "Temperatura >= 28.0 C (Histerese Maxima)");
+              String mot = "Temperatura >= " + String(tempMax, 1) + " C (Histerese Maxima)";
+              enviarEventoRele("aquecedor", "DESLIGADO", "AUTOMATICO", mot.c_str());
 
-              // Inicia os 5 minutos de pós-ventilação do cooler para dissipar o calor residual
+              // Inicia os minutos de pós-ventilação do cooler para dissipar o calor residual
               if (modoAutoCooler) {
                 coolerEmPosVentilacao = true;
                 tempoDesligamentoAquecedor = millis();
@@ -717,7 +815,8 @@ void loop() {
                   coolerAtivo = true;
                   digitalWrite(PIN_RELE_COOLER, RELAY_ON);
                 }
-                enviarEventoRele("cooler", "LIGADO", "AUTOMATICO", "Inicio da pos-ventilacao de 5 min (Dissipacao)");
+                String motV = "Inicio da pos-ventilacao de " + String(posVentilacaoMin) + " min (Dissipacao)";
+                enviarEventoRele("cooler", "LIGADO", "AUTOMATICO", motV.c_str());
               }
             }
           }
@@ -733,14 +832,15 @@ void loop() {
               digitalWrite(PIN_RELE_COOLER, RELAY_ON);
             }
           } else if (coolerEmPosVentilacao) {
-            // Verifica se os 5 minutos de pós-ventilação já expiraram
-            if (millis() - tempoDesligamentoAquecedor >= TEMPO_POS_VENTILACAO_MS) {
+            // Verifica se o tempo de pós-ventilação já expirou
+            if (millis() - tempoDesligamentoAquecedor >= tempoPosVentilacaoMs) {
               coolerEmPosVentilacao = false;
               coolerAtivo = false;
               digitalWrite(PIN_RELE_COOLER, RELAY_OFF);
-              enviarEventoRele("cooler", "DESLIGADO", "AUTOMATICO", "Fim da pos-ventilacao de 5 min (Cooler desligado)");
+              String motF = "Fim da pos-ventilacao de " + String(posVentilacaoMin) + " min (Cooler desligado)";
+              enviarEventoRele("cooler", "DESLIGADO", "AUTOMATICO", motF.c_str());
             } else {
-              // Garante que o cooler permanece ligado durante os 5 minutos
+              // Garante que o cooler permanece ligado durante o tempo de pós-ventilação
               if (!coolerAtivo || digitalRead(PIN_RELE_COOLER) != RELAY_ON) {
                 coolerAtivo = true;
                 digitalWrite(PIN_RELE_COOLER, RELAY_ON);
@@ -755,19 +855,22 @@ void loop() {
           }
         }
 
-        // 3. Trava de Segurança Térmica Absoluta contra Superaquecimento (>= 30.0 °C)
-        if (temperatura >= 30.0) {
+        // 3. Trava de Segurança Térmica Absoluta contra Superaquecimento
+        float tempLimiteSeguranca = (tempMax + 2.0f > 32.0f) ? (tempMax + 2.0f) : 32.0f;
+        if (temperatura >= tempLimiteSeguranca) {
           if (aquecedorAtivo || digitalRead(PIN_RELE_LAMPADA) != RELAY_OFF) {
             aquecedorAtivo = false;
             digitalWrite(PIN_RELE_LAMPADA, RELAY_OFF);
-            Serial.println(F("[SEGURANCA TERMICA] Temp >= 30 C! Aquecedor forçado a DESLIGAR!"));
-            enviarEventoRele("aquecedor", "DESLIGADO", "SEGURANCA", "Corte termico de protecao (>30C)");
+            Serial.printf("[SEGURANCA TERMICA] Temp >= %.1f C! Aquecedor forçado a DESLIGAR!\n", tempLimiteSeguranca);
+            String motS = "Corte termico de protecao (>=" + String(tempLimiteSeguranca, 1) + "C)";
+            enviarEventoRele("aquecedor", "DESLIGADO", "SEGURANCA", motS.c_str());
           }
           if (!coolerAtivo || digitalRead(PIN_RELE_COOLER) != RELAY_ON) {
             coolerAtivo = true;
             digitalWrite(PIN_RELE_COOLER, RELAY_ON);
-            Serial.println(F("[SEGURANCA TERMICA] Temp >= 30 C! Cooler ativado para resfriamento rapido!"));
-            enviarEventoRele("cooler", "LIGADO", "SEGURANCA", "Resfriamento forcado de protecao (>30C)");
+            Serial.printf("[SEGURANCA TERMICA] Temp >= %.1f C! Cooler ativado para resfriamento rapido!\n", tempLimiteSeguranca);
+            String motC = "Resfriamento forcado de protecao (>=" + String(tempLimiteSeguranca, 1) + "C)";
+            enviarEventoRele("cooler", "LIGADO", "SEGURANCA", motC.c_str());
           }
         }
       }
