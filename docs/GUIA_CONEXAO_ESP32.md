@@ -11,7 +11,7 @@ Dependendo de onde a placa ESP32 estiver instalada, utilize o endereço correspo
 | Cenário de Instalação | Protocolo | Endereço / URL no ESP32 | Porta |
 | :--- | :--- | :--- | :--- |
 | **Na mesma rede de casa (Bancada / Teste)** | **HTTP REST** | `http://192.168.0.105:3000/api/telemetria` | `3000` |
-| **No Campo / Remoto (Internet / 4G / Outro Wi-Fi)** | **HTTPS REST** | `https://stunning-modeling-became-coverage.trycloudflare.com/api/telemetria` | `443` |
+| **No Campo / Remoto (Internet / 4G / Outro Wi-Fi)** | **HTTPS REST** | `https://reviews-responsible-approval-beautiful.trycloudflare.com/api/telemetria` | `443` |
 | **Rede Local via MQTT (Baixa latência / Tempo Real)** | **MQTT (TCP)** | `192.168.0.105` | `1883` |
 
 > [!NOTE]
@@ -99,7 +99,7 @@ O código oficial do microcontrolador já foi **completamente atualizado e confi
 ### Modificações Realizadas no Código C:
 1. **Constantes Globais (Linhas 99 a 101):**
 ```cpp
-#define DEFAULT_SERVER_URL "https://stunning-modeling-became-coverage.trycloudflare.com/api/telemetria"
+#define DEFAULT_SERVER_URL "https://reviews-responsible-approval-beautiful.trycloudflare.com/api/telemetria"
 #define DEFAULT_CRYPTO_KEY "GaiaAgroIoT2026!"
 #define GAIA_PROJECT_TOKEN "GAIA_TOKEN_2026_AGRO"
 ```
@@ -120,7 +120,7 @@ doc["ts"]     = ts;
 ```
 
 ### Como Trocar entre Rede Local e Nuvem:
-- **Pela Nuvem (Cloudflare):** Já vem configurado por padrão com `https://stunning-modeling-became-coverage.trycloudflare.com/api/telemetria`.
+- **Pela Nuvem (Cloudflare):** Já vem configurado por padrão com `https://reviews-responsible-approval-beautiful.trycloudflare.com/api/telemetria`.
 - **Pela Rede Local de Bancada:** Caso queira apontar diretamente para o servidor local sem passar pela internet, basta alterar `DEFAULT_SERVER_URL` para:
   `http://192.168.0.105:3000/api/telemetria`
 - **Ou pelo Portal Captivo Wi-Fi:** Segure o botão no **GPIO 15** no boot, conecte na rede Wi-Fi `GAIA-TX-[MAC]`, abra `http://192.168.4.1` e informe a URL desejada. As alterações são salvas na memória NVS permanente do ESP32.
@@ -148,7 +148,7 @@ const char* password = "SUA_SENHA_AQUI";
 
 // URL do Servidor (Local ou Cloudflare)
 const char* serverUrl = "http://192.168.0.105:3000/api/telemetria";
-// const char* serverUrl = "https://stunning-modeling-became-coverage.trycloudflare.com/api/telemetria";
+// const char* serverUrl = "https://reviews-responsible-approval-beautiful.trycloudflare.com/api/telemetria";
 
 void setup() {
   Serial.begin(115200);
@@ -319,7 +319,7 @@ Assim que o ESP32 enviar um pacote, aparecerá instantaneamente no terminal:
 
 ### 2. Pelo Dashboard Web
 Basta abrir o link:
-👉 **[https://stunning-modeling-became-coverage.trycloudflare.com](https://stunning-modeling-became-coverage.trycloudflare.com)**  
+👉 **[https://reviews-responsible-approval-beautiful.trycloudflare.com](https://reviews-responsible-approval-beautiful.trycloudflare.com)**  
 O badge superior exibirá **"Tempo Real Conectado"** e todos os gráficos e cards se moverão no momento exato em que o ESP32 transmitir.
 
 ---

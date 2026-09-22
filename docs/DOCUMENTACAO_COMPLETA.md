@@ -115,7 +115,7 @@ Para garantir disponibilidade contínua em qualquer cenário (mesmo em redes hos
 * **Por que funciona na Universidade Federal:** Redes acadêmicas e corporativas bloqueiam portas não-padrão e conexões entrantes, mas liberam a porta 443 para navegação HTTPS comum. O tráfego do túnel é indistinguível de uma navegação web padrão.
 * **Serviço do Sistema:** Gerenciado pelo `systemd` via `/etc/systemd/system/gaia-tunnel.service` com reinicialização automática em caso de falha.
 * **URL Pública Oficial Ativa:**  
-  👉 **`https://stunning-modeling-became-coverage.trycloudflare.com`**
+  👉 **`https://reviews-responsible-approval-beautiful.trycloudflare.com`**
 
 ### Camada B: Tailscale (Rede Privada Mesh)
 * **Como funciona:** Cria uma rede VPN ponto a ponto cifrada com WireGuard entre seus dispositivos autorizados.
@@ -217,7 +217,7 @@ No seu projeto de campo (`TX Telemetria.c` ou `TX_Telemetria.ino`), basta config
 
 ### Ambiente de Produção em Campo (Qualquer Rede Wi-Fi / 4G)
 ```cpp
-#define DEFAULT_SERVER_URL "https://stunning-modeling-became-coverage.trycloudflare.com/api/telemetria"
+#define DEFAULT_SERVER_URL "https://reviews-responsible-approval-beautiful.trycloudflare.com/api/telemetria"
 ```
 
 > [!TIP]

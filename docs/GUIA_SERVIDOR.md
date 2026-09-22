@@ -24,7 +24,7 @@ Este documento centraliza todas as informações de acesso, arquitetura, credenc
 Para que qualquer pessoa acerte o sistema de qualquer lugar (inclusive da rede bloqueada da Universidade Federal):
 
 * **Link Público Mundial:**  
-  👉 **[https://stunning-modeling-became-coverage.trycloudflare.com](https://stunning-modeling-became-coverage.trycloudflare.com)**
+  👉 **[https://reviews-responsible-approval-beautiful.trycloudflare.com](https://reviews-responsible-approval-beautiful.trycloudflare.com)**
 * **Certificado SSL / HTTPS:** Automático, emitido e protegido pela Cloudflare.
 * **Serviço no Linux Mint:** Rodando 24/7 gerenciado pelo `systemd` (`gaia-tunnel.service`).
 
@@ -49,7 +49,7 @@ Todos os serviços rodam em containers **Docker** isolados, orquestrados pelo ar
 
 | Serviço | Acesso Local | Acesso Tailscale | Acesso Público (Mundial) | Notas / Credenciais |
 | :--- | :--- | :--- | :--- | :--- |
-| **ATGH2O / GAIA** (React + API) | `http://192.168.0.105:3000` | `http://100.126.236.22:3000` | [Link Cloudflare](https://stunning-modeling-became-coverage.trycloudflare.com) | Sistema completo com Mapa Satélite em Tela Cheia e Telemetria |
+| **ATGH2O / GAIA** (React + API) | `http://192.168.0.105:3000` | `http://100.126.236.22:3000` | [Link Cloudflare](https://reviews-responsible-approval-beautiful.trycloudflare.com) | Sistema completo com Mapa Satélite em Tela Cheia e Telemetria |
 | **Portainer** (Gestão Docker) | `http://192.168.0.105:9000` | `http://100.126.236.22:9000` | -- | Painel gráfico para gerenciar containers |
 | **Nginx Proxy Manager** (SSL/Proxy) | `http://192.168.0.105:81` | `http://100.126.236.22:81` | -- | **Email:** `admin@example.com`<br>**Senha:** `changeme` |
 | **Adminer** (Visualizador Web BD) | `http://192.168.0.105:8080` | `http://100.126.236.22:8080` | -- | Sistema: PostgreSQL<br>Servidor: `postgres`<br>Usuário: `server_admin`<br>Senha: `server_password_123`<br>Banco: `app_db` |
@@ -69,5 +69,5 @@ No código do ESP32 (`TX Telemetria.c`), configure o endpoint:
 
 ### No campo / Internet (Wi-Fi externo ou 4G):
 ```cpp
-#define DEFAULT_SERVER_URL "https://stunning-modeling-became-coverage.trycloudflare.com/api/telemetria"
+#define DEFAULT_SERVER_URL "https://reviews-responsible-approval-beautiful.trycloudflare.com/api/telemetria"
 ```
