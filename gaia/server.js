@@ -87,7 +87,66 @@ async function initDatabase() {
       ALTER TABLE gaia_telemetria ADD COLUMN IF NOT EXISTS hi NUMERIC(5,2);
     `);
 
-    // 3. Tabela de Cadastro e Geolocalização das Estações com Regras de Visibilidade e Financeiro
+    // 3. Tabela de Perfis Agronômicos de Culturas (FAO-56 & Embrapa)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS gaia_culturas_perfil (
+        id SERIAL PRIMARY KEY,
+        codigo VARCHAR(32) UNIQUE NOT NULL,
+        nome VARCHAR(64) NOT NULL,
+        categoria VARCHAR(32) NOT NULL,
+        kc_inicial NUMERIC(4,2) DEFAULT 0.40,
+        kc_medio NUMERIC(4,2) DEFAULT 1.05,
+        kc_final NUMERIC(4,2) DEFAULT 0.85,
+        temp_basal_inferior NUMERIC(4,1) DEFAULT 10.0,
+        temp_otima_min NUMERIC(4,1) DEFAULT 18.0,
+        temp_otima_max NUMERIC(4,1) DEFAULT 24.0,
+        temp_estresse_calor NUMERIC(4,1) DEFAULT 32.0,
+        temp_critica_geada NUMERIC(4,1) DEFAULT 2.0,
+        vpd_otimo_min NUMERIC(4,2) DEFAULT 0.8,
+        vpd_otimo_max NUMERIC(4,2) DEFAULT 1.2,
+        vpd_estresse NUMERIC(4,2) DEFAULT 1.6,
+        profundidade_raiz_cm INT DEFAULT 40,
+        fator_esgotamento_p NUMERIC(3,2) DEFAULT 0.45,
+        doencas_monitoradas VARCHAR(150),
+        alerta_fungo_temp_min NUMERIC(4,1) DEFAULT 20.0,
+        alerta_fungo_temp_max NUMERIC(4,1) DEFAULT 26.0,
+        alerta_fungo_umid_min NUMERIC(4,1) DEFAULT 85.0
+      );
+
+      INSERT INTO gaia_culturas_perfil (
+        codigo, nome, categoria, kc_inicial, kc_medio, kc_final,
+        temp_basal_inferior, temp_otima_min, temp_otima_max, temp_estresse_calor, temp_critica_geada,
+        vpd_otimo_min, vpd_otimo_max, vpd_estresse, profundidade_raiz_cm, fator_esgotamento_p,
+        doencas_monitoradas, alerta_fungo_temp_min, alerta_fungo_temp_max, alerta_fungo_umid_min
+      ) VALUES 
+      ('CAFE_ARABICA', 'Café Arábica', 'Perene', 0.85, 1.05, 0.90, 10.0, 18.0, 23.0, 32.0, 2.5, 0.80, 1.20, 1.60, 40, 0.45, 'Ferrugem do Cafeeiro e Cercosporiose', 20.0, 26.0, 85.0),
+      ('CAFE_CONILON', 'Café Conilon (Robusta)', 'Perene', 0.90, 1.10, 0.95, 13.0, 22.0, 27.0, 35.0, 4.0, 0.80, 1.30, 1.70, 35, 0.45, 'Mancha Aureolada e Ferrugem', 22.0, 28.0, 85.0),
+      ('SOJA', 'Soja', 'Grãos', 0.40, 1.15, 0.50, 10.0, 20.0, 30.0, 35.0, 0.0, 0.80, 1.40, 1.80, 40, 0.50, 'Ferrugem Asiática e Mancha Alvo', 18.0, 26.0, 80.0),
+      ('MILHO', 'Milho (Grão e Silagem)', 'Grãos', 0.35, 1.20, 0.60, 10.0, 24.0, 30.0, 36.0, 1.0, 0.80, 1.50, 2.00, 50, 0.55, 'Cercosporiose, Enfezamento e Mancha Branca', 22.0, 30.0, 80.0),
+      ('FEIJAO', 'Feijão Comum', 'Grãos', 0.40, 1.10, 0.35, 10.0, 18.0, 25.0, 30.0, 2.0, 0.80, 1.30, 1.60, 30, 0.45, 'Antracnose e Mofo Branco', 16.0, 22.0, 85.0),
+      ('ALGODAO', 'Algodão', 'Fibras', 0.45, 1.15, 0.60, 12.0, 25.0, 32.0, 38.0, 2.0, 0.80, 1.50, 2.00, 60, 0.65, 'Ramulária e Mancha de Phoma', 22.0, 30.0, 80.0),
+      ('CANA_DE_ACUCAR', 'Cana-de-Açúcar', 'Semi-perene', 0.40, 1.25, 0.70, 12.0, 26.0, 33.0, 38.0, 0.0, 0.80, 1.60, 2.20, 60, 0.65, 'Ferrugem Alaranjada e Carvão', 24.0, 30.0, 80.0),
+      ('TRIGO', 'Trigo', 'Grãos', 0.35, 1.15, 0.40, 4.5, 15.0, 22.0, 30.0, -2.0, 0.60, 1.20, 1.50, 40, 0.55, 'Brusone do Trigo e Giberela', 18.0, 24.0, 85.0),
+      ('BATATA', 'Batata', 'Hortifrúti', 0.50, 1.15, 0.75, 7.0, 16.0, 20.0, 26.0, 1.0, 0.60, 1.10, 1.40, 30, 0.35, 'Requeima e Pinta Preta', 15.0, 22.0, 90.0),
+      ('TOMATE', 'Tomateiro', 'Hortifrúti', 0.60, 1.15, 0.80, 10.0, 19.0, 24.0, 31.0, 2.0, 0.70, 1.20, 1.50, 35, 0.40, 'Requeima e Murcha Bacteriana', 18.0, 24.0, 85.0),
+      ('CITROS', 'Citros (Laranja e Limão)', 'Perene', 0.70, 0.80, 0.75, 13.0, 23.0, 32.0, 37.0, -1.0, 0.80, 1.40, 1.80, 50, 0.50, 'Cancro Cítrico e Clorose Variegada', 24.0, 32.0, 80.0),
+      ('PASTAGEM_BRAQUIARIA', 'Pastagem (Braquiária)', 'Forrageira', 0.70, 0.95, 0.80, 15.0, 25.0, 35.0, 40.0, 1.0, 0.80, 1.80, 2.50, 50, 0.60, 'Cigarrinha-das-pastagens', 24.0, 32.0, 80.0)
+      ON CONFLICT (codigo) DO UPDATE SET
+        nome = EXCLUDED.nome,
+        categoria = EXCLUDED.categoria,
+        kc_medio = EXCLUDED.kc_medio,
+        temp_basal_inferior = EXCLUDED.temp_basal_inferior,
+        temp_otima_min = EXCLUDED.temp_otima_min,
+        temp_otima_max = EXCLUDED.temp_otima_max,
+        temp_estresse_calor = EXCLUDED.temp_estresse_calor,
+        temp_critica_geada = EXCLUDED.temp_critica_geada,
+        vpd_otimo_min = EXCLUDED.vpd_otimo_min,
+        vpd_otimo_max = EXCLUDED.vpd_otimo_max,
+        vpd_estresse = EXCLUDED.vpd_estresse,
+        doencas_monitoradas = EXCLUDED.doencas_monitoradas;
+    `);
+
+    // 4. Tabela de Cadastro e Geolocalização das Estações
     await pool.query(`
       CREATE TABLE IF NOT EXISTS gaia_estacoes (
         cod_estacao VARCHAR(16) PRIMARY KEY,
@@ -100,10 +159,12 @@ async function initDatabase() {
         proprietario_id INT REFERENCES gaia_usuarios(id) ON DELETE SET NULL,
         api_token VARCHAR(64) DEFAULT NULL,
         ativo BOOLEAN DEFAULT TRUE,
+        cultura_id INT REFERENCES gaia_culturas_perfil(id),
         criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         atualizado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
       ALTER TABLE gaia_estacoes ADD COLUMN IF NOT EXISTS api_token VARCHAR(64) DEFAULT NULL;
+      ALTER TABLE gaia_estacoes ADD COLUMN IF NOT EXISTS cultura_id INT REFERENCES gaia_culturas_perfil(id);
     `);
 
     // 4. Criação da Conta Master Solicitada
@@ -131,22 +192,24 @@ async function initDatabase() {
       console.log(`[AUTH] Conta Master verificada/atualizada: ${emailMaster}`);
     }
 
-    // 5. Seed das Estações nos Três Cenários de Negócio com Token Unificado do Projeto GAIA
+    // 5. Registro Exclusivo da Estação Real G00001 (Remoção de estações fake)
+    await pool.query("DELETE FROM gaia_estacoes WHERE cod_estacao != 'G00001'");
+    await pool.query("DELETE FROM gaia_telemetria WHERE cod_estacao != 'G00001'");
+
     await pool.query(`
-      INSERT INTO gaia_estacoes (cod_estacao, nome, cultura, latitude, longitude, visibilidade, status_financeiro, proprietario_id, api_token)
+      INSERT INTO gaia_estacoes (cod_estacao, nome, cultura, cultura_id, latitude, longitude, visibilidade, status_financeiro, proprietario_id, api_token)
       VALUES 
-        ('G00001', 'Pivô 01 - Monte Carmelo', 'Café Arábica', -18.726500, -47.498500, 'PUBLICA', 'ATIVO', NULL, 'GAIA_TOKEN_2026_AGRO'),
-        ('G00002', 'Talhão 04 - Arraial Perdizes', 'Soja Safra', -18.732000, -47.455000, 'PUBLICA', 'ATIVO', NULL, 'GAIA_TOKEN_2026_AGRO'),
-        ('G00003', 'Fazenda Particular Santa Bárbara', 'Milho Especial', -18.765000, -47.512000, 'PRIVADA', 'ATIVO', $1, 'GAIA_TOKEN_2026_AGRO'),
-        ('G00004', 'Estufa Climatizada - São Félix', 'Tomate Grape', -18.708000, -47.525000, 'PRIVADA', 'ATIVO', $1, 'GAIA_TOKEN_2026_AGRO'),
-        ('G00005', 'Setor Oeste - Fazenda Estrela', 'Pastagem Confinamento', -18.719000, -47.555000, 'PUBLICA', 'PENDENTE', NULL, 'GAIA_TOKEN_2026_AGRO'),
-        ('G00006', 'Represa Central - Perdizes', 'Recursos Hídricos', -18.741000, -47.482000, 'PUBLICA', 'ATIVO', NULL, 'GAIA_TOKEN_2026_AGRO')
+        ('G00001', 'Estação GAIA G00001 (Monte Carmelo)', 'Café Arábica', (SELECT id FROM gaia_culturas_perfil WHERE codigo = 'CAFE_ARABICA'), -18.726500, -47.498500, 'PUBLICA', 'ATIVO', NULL, 'GAIA_TOKEN_2026_AGRO')
       ON CONFLICT (cod_estacao) DO UPDATE SET
+        nome = EXCLUDED.nome,
+        cultura = EXCLUDED.cultura,
+        cultura_id = (SELECT id FROM gaia_culturas_perfil WHERE codigo = 'CAFE_ARABICA'),
+        latitude = EXCLUDED.latitude,
+        longitude = EXCLUDED.longitude,
         visibilidade = EXCLUDED.visibilidade,
         status_financeiro = EXCLUDED.status_financeiro,
-        proprietario_id = EXCLUDED.proprietario_id,
         api_token = 'GAIA_TOKEN_2026_AGRO';
-    `, [masterUserId]);
+    `);
 
     console.log('Banco de dados PostgreSQL e permissões de estações inicializados com sucesso.');
   } catch (err) {
@@ -429,6 +492,16 @@ app.post('/maria-web/', processarTelemetria);
 // ROTAS DE ESTAÇÕES COM REGRAS DE ACESSO
 // ==========================================
 
+// Rota de listagem do catálogo agronômico de culturas
+app.get('/api/culturas', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM gaia_culturas_perfil ORDER BY categoria, nome');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Listar estações com controle de visualização (Pública, Privada e Inadimplente)
 app.get('/api/estacoes', obterUsuarioOpcional, async (req, res) => {
   try {
@@ -440,6 +513,7 @@ app.get('/api/estacoes', obterUsuarioOpcional, async (req, res) => {
         e.cod_estacao,
         e.nome,
         e.cultura,
+        e.cultura_id,
         e.latitude,
         e.longitude,
         e.visibilidade,
@@ -447,6 +521,21 @@ app.get('/api/estacoes', obterUsuarioOpcional, async (req, res) => {
         e.proprietario_id,
         e.api_token,
         e.ativo,
+        cp.codigo AS cp_codigo,
+        cp.nome AS cp_nome,
+        cp.categoria AS cp_categoria,
+        cp.kc_inicial AS cp_kc_inicial,
+        cp.kc_medio AS cp_kc_medio,
+        cp.kc_final AS cp_kc_final,
+        cp.temp_basal_inferior AS cp_temp_basal_inferior,
+        cp.temp_otima_min AS cp_temp_otima_min,
+        cp.temp_otima_max AS cp_temp_otima_max,
+        cp.temp_estresse_calor AS cp_temp_estresse_calor,
+        cp.temp_critica_geada AS cp_temp_critica_geada,
+        cp.vpd_otimo_min AS cp_vpd_otimo_min,
+        cp.vpd_otimo_max AS cp_vpd_otimo_max,
+        cp.vpd_estresse AS cp_vpd_estresse,
+        cp.doencas_monitoradas AS cp_doencas_monitoradas,
         t.timestamp_utc,
         t.data_hora,
         t.temp_ref,
@@ -471,6 +560,7 @@ app.get('/api/estacoes', obterUsuarioOpcional, async (req, res) => {
         t.qualidade,
         t.heap_mod
       FROM gaia_estacoes e
+      LEFT JOIN gaia_culturas_perfil cp ON cp.id = e.cultura_id
       LEFT JOIN LATERAL (
         SELECT * FROM gaia_telemetria 
         WHERE cod_estacao = e.cod_estacao 
@@ -516,6 +606,25 @@ app.get('/api/estacoes', obterUsuarioOpcional, async (req, res) => {
         cod_estacao: r.cod_estacao,
         nome: r.nome,
         cultura: r.cultura,
+        cultura_id: r.cultura_id,
+        cultura_perfil: r.cultura_id ? {
+          id: r.cultura_id,
+          codigo: r.cp_codigo,
+          nome: r.cp_nome,
+          categoria: r.cp_categoria,
+          kc_inicial: r.cp_kc_inicial ? parseFloat(r.cp_kc_inicial) : 0.4,
+          kc_medio: r.cp_kc_medio ? parseFloat(r.cp_kc_medio) : 1.05,
+          kc_final: r.cp_kc_final ? parseFloat(r.cp_kc_final) : 0.85,
+          temp_basal_inferior: r.cp_temp_basal_inferior ? parseFloat(r.cp_temp_basal_inferior) : 10.0,
+          temp_otima_min: r.cp_temp_otima_min ? parseFloat(r.cp_temp_otima_min) : 18.0,
+          temp_otima_max: r.cp_temp_otima_max ? parseFloat(r.cp_temp_otima_max) : 23.0,
+          temp_estresse_calor: r.cp_temp_estresse_calor ? parseFloat(r.cp_temp_estresse_calor) : 32.0,
+          temp_critica_geada: r.cp_temp_critica_geada ? parseFloat(r.cp_temp_critica_geada) : 2.0,
+          vpd_otimo_min: r.cp_vpd_otimo_min ? parseFloat(r.cp_vpd_otimo_min) : 0.8,
+          vpd_otimo_max: r.cp_vpd_otimo_max ? parseFloat(r.cp_vpd_otimo_max) : 1.2,
+          vpd_estresse: r.cp_vpd_estresse ? parseFloat(r.cp_vpd_estresse) : 1.6,
+          doencas_monitoradas: r.cp_doencas_monitoradas
+        } : null,
         latitude: parseFloat(r.latitude),
         longitude: parseFloat(r.longitude),
         visibilidade: r.visibilidade,
@@ -663,7 +772,7 @@ app.get('/api/telemetria/historico', obterUsuarioOpcional, async (req, res) => {
 // Atualizar dados de uma estação (apenas Master/Admin ou dono)
 app.put('/api/estacoes/:cod', exigirAuth, async (req, res) => {
   const cod = req.params.cod;
-  const { nome, cultura, latitude, longitude, visibilidade, status_financeiro, api_token } = req.body;
+  const { nome, cultura, cultura_id, latitude, longitude, visibilidade, status_financeiro, api_token } = req.body;
   const user = req.user;
   const isMaster = user.role === 'ADMIN';
 
@@ -678,6 +787,16 @@ app.put('/api/estacoes/:cod', exigirAuth, async (req, res) => {
       return res.status(403).json({ error: 'Você não tem permissão para alterar esta estação.' });
     }
 
+    // Se informou cultura_id, sincroniza o nome correspondente do catálogo
+    let nomeCultura = cultura;
+    let novoCulturaId = cultura_id !== undefined ? cultura_id : st.cultura_id;
+    if (cultura_id) {
+      const cRes = await pool.query('SELECT nome FROM gaia_culturas_perfil WHERE id = $1', [cultura_id]);
+      if (cRes.rows.length > 0) {
+        nomeCultura = cRes.rows[0].nome;
+      }
+    }
+
     // Apenas Master pode alterar o status financeiro
     const novoStatusFin = isMaster ? status_financeiro || st.status_financeiro : st.status_financeiro;
 
@@ -686,15 +805,16 @@ app.put('/api/estacoes/:cod', exigirAuth, async (req, res) => {
       SET 
         nome = COALESCE($1, nome),
         cultura = COALESCE($2, cultura),
-        latitude = COALESCE($3, latitude),
-        longitude = COALESCE($4, longitude),
-        visibilidade = COALESCE($5, visibilidade),
-        status_financeiro = COALESCE($6, status_financeiro),
-        api_token = COALESCE($7, api_token),
+        cultura_id = COALESCE($3, cultura_id),
+        latitude = COALESCE($4, latitude),
+        longitude = COALESCE($5, longitude),
+        visibilidade = COALESCE($6, visibilidade),
+        status_financeiro = COALESCE($7, status_financeiro),
+        api_token = COALESCE($8, api_token),
         atualizado_em = CURRENT_TIMESTAMP
-      WHERE cod_estacao = $8
+      WHERE cod_estacao = $9
       RETURNING *;
-    `, [nome, cultura, latitude, longitude, visibilidade, novoStatusFin, api_token, cod]);
+    `, [nome, nomeCultura, novoCulturaId, latitude, longitude, visibilidade, novoStatusFin, api_token, cod]);
 
     broadcast('ESTACAO_ATUALIZADA', result.rows[0]);
     res.json(result.rows[0]);
@@ -703,181 +823,6 @@ app.put('/api/estacoes/:cod', exigirAuth, async (req, res) => {
   }
 });
 
-// Endpoint de simulação
-app.post('/api/simular', async (req, res) => {
-  const estacao = req.body.estacao || 'G00001';
-  const tDht = (22 + Math.random() * 8).toFixed(1);
-  const umidade = (55 + Math.random() * 30).toFixed(1);
-  const pressao = (1012 + Math.random() * 6).toFixed(1);
-  const lux = Math.floor(5000 + Math.random() * 35000);
-  const solo = Math.floor(40 + Math.random() * 35);
-  const tSolo = (parseFloat(tDht) - 1.5 + Math.random() * 0.8).toFixed(1);
-
-  const a = 17.27, b = 237.7;
-  const temp = parseFloat(tDht);
-  const rh = parseFloat(umidade);
-  const alpha = ((a * temp) / (b + temp)) + Math.log(rh / 100.0);
-  const po = ((b * alpha) / (a - alpha)).toFixed(1);
-
-  const es = 0.61078 * Math.exp((17.27 * temp) / (temp + 237.3));
-  const ea = es * (rh / 100.0);
-  const vpd = Math.max(0, es - ea).toFixed(3);
-
-  const radRs = parseFloat((lux * 0.0079).toFixed(1));
-  const par = parseFloat((lux * 0.018).toFixed(1));
-  const et0 = (0.015 + (lux / 70000) * 0.035 + parseFloat(vpd) * 0.015).toFixed(4);
-  const etc = parseFloat((parseFloat(et0) * 1.05).toFixed(4));
-  const itu = parseFloat((0.8 * temp + (rh / 100) * (temp - 14.4) + 46.4).toFixed(1));
-  const hi = parseFloat((temp + 0.5555 * (6.11 * Math.exp(5417.7530 * (1/273.16 - 1/(273.15 + parseFloat(po)))) - 10)).toFixed(1));
-
-  const mockPayload = {
-    codSta: estacao,
-    token: GAIA_PROJECT_TOKEN,
-    ts: Math.floor(Date.now() / 1000),
-    tB: parseFloat(tDht) - 0.3,
-    p: parseFloat(pressao),
-    l: lux,
-    h: parseFloat(umidade),
-    tD: parseFloat(tDht),
-    s: solo,
-    tS: parseFloat(tSolo),
-    tRef: parseFloat(tDht),
-    dT: 0.3,
-    q: 100,
-    po: parseFloat(po),
-    vpd: parseFloat(vpd),
-    et0: parseFloat(et0),
-    etc: etc,
-    rs: radRs,
-    par: par,
-    rf: 0,
-    rg: 0,
-    dp: 0.0,
-    at: false,
-    itu: itu,
-    hi: hi,
-    heapMod: 412
-  };
-
-  req.body = mockPayload;
-  return processarTelemetria(req, res);
-});
-
-// Endpoint para gerar histórico realista com cobertura de 24h, 7d, 30d, 6m e 1 ano
-app.post('/api/estacoes/:cod/popular-historico', async (req, res) => {
-  const cod = req.params.cod;
-  const now = Math.floor(Date.now() / 1000);
-
-  try {
-    // Lista de timestamps para gerar:
-    // 1. Últimas 24 horas (hora a hora)
-    // 2. Dias 2 a 7 (4 vezes por dia)
-    // 3. Dias 8 a 30 (2 vezes por dia)
-    // 4. Dias 31 a 365 (1 vez a cada 2 dias)
-    const timestamps = [];
-    
-    // 24h: 24 pontos
-    for (let h = 24; h >= 1; h--) {
-      timestamps.push(now - (h * 3600));
-    }
-    // 7d: dias 2 a 7 (4 leituras/dia)
-    for (let d = 2; d <= 7; d++) {
-      for (const h of [0, 6, 12, 18]) {
-        timestamps.push(now - (d * 86400) + (h * 3600));
-      }
-    }
-    // 30d: dias 8 a 30 (2 leituras/dia)
-    for (let d = 8; d <= 30; d++) {
-      for (const h of [6, 14]) {
-        timestamps.push(now - (d * 86400) + (h * 3600));
-      }
-    }
-    // 365d: dias 31 a 365 (1 leitura a cada 2 dias)
-    for (let d = 32; d <= 365; d += 2) {
-      timestamps.push(now - (d * 86400) + (13 * 3600));
-    }
-
-    // Ordena do mais antigo para o mais recente
-    timestamps.sort((a, b) => a - b);
-
-    // Remove leituras antigas para a estação para manter consistência
-    await pool.query('DELETE FROM gaia_telemetria WHERE cod_estacao = $1', [cod]);
-
-    for (const ts of timestamps) {
-      const d = new Date(ts * 1000);
-      const hora = d.getHours();
-      const diaDoAno = Math.floor((ts % 31536000) / 86400);
-
-      // Efeito sazonal ao longo do ano (Verão mais quente/chuvoso, Inverno mais ameno/seco)
-      const sazonal = Math.sin(2 * Math.PI * (diaDoAno - 80) / 365);
-      const tempBase = 18.0 + (sazonal * 4.5);
-
-      // Ciclo diurno
-      const solarFactor = (hora >= 6 && hora <= 18) ? Math.sin(Math.PI * (hora - 6) / 12) : 0;
-      const rs = solarFactor > 0 ? parseFloat((solarFactor * (750 + sazonal * 100) + (Math.random() * 20 - 10)).toFixed(1)) : 0.0;
-      const par = rs > 0 ? parseFloat((rs * 2.15).toFixed(1)) : 0.0;
-      const lux = rs > 0 ? Math.round(rs * 115) : 0;
-
-      const tempFactor = Math.sin(Math.PI * ((hora + 18) % 24) / 24);
-      const temp = parseFloat((tempBase + 9.5 * Math.max(0, tempFactor) + (Math.random() * 0.8 - 0.4)).toFixed(1));
-      const tempDht = temp;
-      const tempBmp = parseFloat((temp - 0.2 + (Math.random() * 0.4 - 0.2)).toFixed(1));
-      const tempRef = parseFloat(((tempDht + tempBmp) / 2).toFixed(1));
-
-      const umid = parseFloat(Math.max(30, Math.min(95, (75 + sazonal * 10) - (temp - tempBase) * 3.5 + (Math.random() * 3 - 1.5))).toFixed(1));
-      const solo = Math.round(Math.max(40, Math.min(85, (60 + sazonal * 12) + (Math.random() * 4 - 2))));
-      const tempSolo = parseFloat((tempBase + 1.5 + (temp - tempBase) * 0.3).toFixed(1));
-
-      // Psicrometria e agronômicos
-      const es = 0.61078 * Math.exp((17.27 * tempRef) / (tempRef + 237.3));
-      const ea = es * (umid / 100);
-      const vpd = parseFloat(Math.max(0.1, es - ea).toFixed(3));
-      const et0 = parseFloat(Math.max(0.01, 0.002 * rs + 0.02 * vpd).toFixed(4));
-      const etc = parseFloat((et0 * 1.05).toFixed(4));
-
-      const a = 17.27, b = 237.7;
-      const alpha = ((a * tempRef) / (b + tempRef)) + Math.log(umid / 100);
-      const po = parseFloat(((b * alpha) / (a - alpha)).toFixed(1));
-
-      const pressao = parseFloat((1013.0 + 1.8 * Math.sin(hora * Math.PI / 6) + (Math.random() * 0.4 - 0.2)).toFixed(1));
-      const dp = parseFloat(((Math.random() * 1.2) - 0.6).toFixed(1));
-      const at = false;
-
-      const itu = parseFloat((0.8 * tempRef + (umid / 100) * (tempRef - 14.4) + 46.4).toFixed(1));
-      const hi = parseFloat((tempRef + (umid > 60 ? (umid - 60) * 0.1 : 0)).toFixed(1));
-      const rf = umid >= 85 ? 2 : (umid >= 70 ? 1 : 0);
-      const rg = (sazonal > 0.3 && Math.random() > 0.8) ? parseFloat((Math.random() * 15).toFixed(1)) : 0.0;
-      const heapMod = Math.floor(390 + Math.random() * 30);
-
-      await pool.query(`
-        INSERT INTO gaia_telemetria (
-          cod_estacao, timestamp_utc, data_hora, temp_bmp, pressao, lux, umidade, temp_dht,
-          umidade_solo, temp_solo, temp_ref, delta_temp, qualidade, ponto_orvalho,
-          vpd, et0, etc, rs, par, rf, rg, dp, at, itu, hi, heap_mod
-        ) VALUES (
-          $1, $2, to_timestamp($3), $4, $5, $6, $7, $8,
-          $9, $10, $11, $12, $13, $14,
-          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
-        );
-      `, [
-        cod, ts, ts, tempBmp, pressao, lux, umid, tempDht,
-        solo, tempSolo, tempRef, Math.abs(parseFloat((tempDht - tempBmp).toFixed(1))), 100, po,
-        vpd, et0, etc, rs, par, rf, rg, dp, at, itu, hi, heapMod
-      ]);
-    }
-
-    // Atualiza cache da estação
-    const ultima = await pool.query('SELECT * FROM gaia_telemetria WHERE cod_estacao = $1 ORDER BY timestamp_utc DESC LIMIT 1', [cod]);
-    if (ultima.rows.length > 0) {
-      broadcast('NOVA_LEITURA', ultima.rows[0]);
-    }
-
-    res.json({ status: 'ok', message: `${timestamps.length} registros (24h até 1 ano) gerados com sucesso para ${cod}` });
-  } catch (err) {
-    console.error('Erro ao popular histórico:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor GAIA com Autenticação e Regras de Estações ativo na porta ${PORT}`);

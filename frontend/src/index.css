@@ -71,6 +71,77 @@ html, body, #root {
   background-color: #ef4444;
 }
 
+/* GAIA Technical Leaflet Beacon Marker */
+.gaia-custom-leaflet-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.technical-marker-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.15s ease-out;
+}
+
+.technical-marker-container:hover {
+  transform: translateY(-2px) scale(1.08);
+}
+
+.technical-marker-container.selected {
+  transform: translateY(-3px) scale(1.15);
+  z-index: 9999 !important;
+}
+
+.station-beacon {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #09090b;
+  border: 1.5px solid var(--ring-color, #71717a);
+  border-radius: 4px;
+  padding: 3px 6px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+}
+
+.beacon-led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px var(--status-color, #22c55e);
+}
+
+.beacon-code {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 11px;
+  color: #f4f4f5;
+  letter-spacing: 0.5px;
+}
+
+.beacon-badge {
+  font-size: 9px;
+  line-height: 1;
+}
+
+.beacon-stem {
+  width: 2px;
+  height: 12px;
+  background-color: var(--ring-color, #71717a);
+  opacity: 0.9;
+}
+
+.beacon-base {
+  width: 10px;
+  height: 3px;
+  background-color: var(--ring-color, #71717a);
+  border-radius: 2px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.8);
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
