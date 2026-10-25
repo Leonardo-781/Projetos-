@@ -516,8 +516,8 @@
               </span>
               <span id="reg-cooler-status" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase bg-slate-800 text-slate-400 border border-slate-700">OFF</span>
             </div>
-            <h4 class="text-base font-bold text-white">Cooler 12V (GPIO 5)</h4>
-            <p class="text-xs text-slate-400 mt-1" id="desc-cooler-setpoints">Ativo com aquecedor + Pós-ventilação de 5 min</p>
+            <h4 class="text-base font-bold text-white">Cooler 12V (GPIO 7)</h4>
+            <p class="text-xs text-slate-400 mt-1" id="desc-cooler-setpoints">Ativo com aquecedor (Sem pós-ventilação)</p>
             <div class="mt-2 text-xs font-medium text-slate-400" id="reg-cooler-modo">Modo: Automático</div>
           </div>
           <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800">
@@ -537,7 +537,7 @@
               <span id="reg-led-status" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase bg-slate-800 text-slate-400 border border-slate-700">OFF</span>
             </div>
             <h4 class="text-base font-bold text-white">Fita LED 12V (GPIO 6)</h4>
-            <p class="text-xs text-slate-400 mt-1">Ciclo 12h: Liga 05:00 / Desliga 17:00</p>
+            <p class="text-xs text-slate-400 mt-1">Fotoperíodo 12h: Liga 05:00 / Desliga 17:00 (Isolado)</p>
             <div class="mt-2 text-xs font-medium text-slate-400" id="reg-led-modo">Modo: Automático</div>
           </div>
           <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800">
@@ -1164,7 +1164,7 @@
             if (descAq) descAq.innerHTML = `Liga se &le; ${tMin.toFixed(1)}°C | Desliga se &ge; ${tMax.toFixed(1)}°C`;
 
             const descCl = document.getElementById('desc-cooler-setpoints');
-            if (descCl) descCl.innerHTML = `Ativo com aquecedor + Pós-ventilação de ${pVent} min`;
+            if (descCl) descCl.innerHTML = `Ativo com aquecedor (Sem pós-ventilação)`;
 
             const inpMin = document.getElementById('cfg-temp-min');
             const inpMax = document.getElementById('cfg-temp-max');

@@ -583,26 +583,42 @@ app.post('/api/comando', authenticateToken, async (req, res) => {
     const act = action.toLowerCase();
     const cmdItem = { rele, action: act };
 
-    await pool.query(`
-      UPDATE agroclima_status_atual
-      SET 
-        comandos_pendentes = COALESCE(comandos_pendentes, '[]'::jsonb) || $2::jsonb,
-        reles_modo = jsonb_set(COALESCE(reles_modo, '{}'::jsonb), ARRAY[$3], $4::jsonb)
-      WHERE sistema = $1
-    `, [
-      sistema, 
-      JSON.stringify([cmdItem]), 
-      rele, 
-      JSON.stringify(act === 'auto' ? 'auto' : 'manual')
-    ]);
-
     if (act === 'on' || act === 'off') {
+      const isLigado = (act === 'on');
+      await pool.query(`
+        UPDATE agroclima_status_atual
+        SET 
+          comandos_pendentes = COALESCE(comandos_pendentes, '[]'::jsonb) || $2::jsonb,
+          reles_modo = jsonb_set(COALESCE(reles_modo, '{}'::jsonb), ARRAY[$3], $4::jsonb),
+          reles_estado = jsonb_set(COALESCE(reles_estado, '{}'::jsonb), ARRAY[$3], $5::jsonb)
+        WHERE sistema = $1
+      `, [
+        sistema, 
+        JSON.stringify([cmdItem]), 
+        rele, 
+        JSON.stringify('manual'),
+        JSON.stringify(isLigado)
+      ]);
+
       const estadoStr = act === 'on' ? 'LIGADO' : 'DESLIGADO';
       const operadorInfo = req.user ? `${req.user.nome} (${req.user.role})` : 'Usuário Autenticado';
       await pool.query(`
         INSERT INTO agroclima_eventos_reles (sistema, rele, estado, modo, motivo)
         VALUES ($1, $2, $3, 'MANUAL', $4)
       `, [sistema, rele, estadoStr, `Comando manual por ${operadorInfo} via painel web`]);
+    } else {
+      await pool.query(`
+        UPDATE agroclima_status_atual
+        SET 
+          comandos_pendentes = COALESCE(comandos_pendentes, '[]'::jsonb) || $2::jsonb,
+          reles_modo = jsonb_set(COALESCE(reles_modo, '{}'::jsonb), ARRAY[$3], $4::jsonb)
+        WHERE sistema = $1
+      `, [
+        sistema, 
+        JSON.stringify([cmdItem]), 
+        rele, 
+        JSON.stringify('auto')
+      ]);
     }
 
     // DISPARO IMEDIATO AO ESP32 (Sub-segundo se na mesma rede Wi-Fi/LAN)
