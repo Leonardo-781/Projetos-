@@ -48,7 +48,7 @@ const char* WIFI_PASS_2 = "leonardo";
 
 // URLs do Servidor Central (Rede Local + Túnel Público HTTPS)
 const char* SERVER_URL_LOCAL  = "http://192.168.0.105:3001";
-const char* SERVER_URL_TUNNEL = "https://neo-distant-legislative-ocean.trycloudflare.com";
+const char* SERVER_URL_TUNNEL = "https://server1.taila7d06b.ts.net:8443";
 
 // Servidores NTP para Sincronização do Relógio de Brasília (UTC-3)
 const long gmtOffset_sec     = -3 * 3600; 
@@ -68,9 +68,9 @@ uint8_t enderecoLCD    = 0x27;
 
 WebServer server(80);
 
-// Níveis lógicos para módulo relé Active-Low
-const bool RELE_LIGADO    = LOW;
-const bool RELE_DESLIGADO = HIGH;
+// Níveis lógicos para módulo relé Active-High (HIGH = Liga, LOW = Desliga)
+const bool RELE_LIGADO    = HIGH;
+const bool RELE_DESLIGADO = LOW;
 
 // =========================================================================
 // VARIÁVEIS DE ESTADO
@@ -84,10 +84,10 @@ float umidade       = 0.0;
 bool dhtOk          = false;
 bool horaSincronizada = false;
 
-// Programação Horária Automática: Ligar às 17:00 e Desligar às 05:00
-const int HORA_LIGA      = 17;
+// Programação Horária Automática: Ligar às 05:00 e Desligar às 17:00
+const int HORA_LIGA      = 5;
 const int MINUTO_LIGA    = 0;
-const int HORA_DESLIGA   = 5;
+const int HORA_DESLIGA   = 17;
 const int MINUTO_DESLIGA = 0;
 
 // Temporizadores não-bloqueantes
@@ -185,11 +185,14 @@ int enviarHttpComFallback(const String &endpoint, const String &json, String &pa
   HTTPClient http;
   int httpCode = -1;
 
-  // 1. Se estiver na rede LABIQ, tenta primeiro conexão local direta
-  if (WiFi.SSID() == "LABIQ") {
+  // 1. Só tenta IP local se o próprio ESP estiver na mesma sub-rede do servidor em casa (192.168.0.x)
+  IPAddress ip = WiFi.localIP();
+  bool redeLocalServidor = (ip[0] == 192 && ip[1] == 168 && ip[2] == 0);
+
+  if (redeLocalServidor) {
     String url = String(SERVER_URL_LOCAL) + endpoint;
     http.begin(url);
-    http.setTimeout(1500);
+    http.setTimeout(800);
     http.addHeader("Content-Type", "application/json");
     httpCode = http.POST(json);
     if (httpCode > 0) {
@@ -201,12 +204,13 @@ int enviarHttpComFallback(const String &endpoint, const String &json, String &pa
     http.end();
   }
 
-  // 2. Se não estiver no LABIQ ou se falhar local, usa o Túnel HTTPS Cloudflare
+  // 2. Se estiver fora de casa (Universidade/LABIQ 10.x.x.x, 4G, etc.), usa direto o Túnel HTTPS sem perder 1.5s
   WiFiClientSecure secureClient;
-  secureClient.setInsecure(); // Conexão SSL leve sem certificados pesados
+  secureClient.setInsecure(); // Conexão SSL leve sem validação pesada
   String url = String(SERVER_URL_TUNNEL) + endpoint;
   http.begin(secureClient, url);
-  http.setTimeout(3500);
+  http.setReuse(true); // Reutiliza sessão TLS para conexão ultrarrápida
+  http.setTimeout(5000);
   http.addHeader("Content-Type", "application/json");
   httpCode = http.POST(json);
   if (httpCode > 0) {
@@ -542,7 +546,7 @@ void loop() {
     if (modoAutomatico && sistemaAtivoRemoto) {
       bool deveLigar = verificarHorarioAutomatico(timeinfo.tm_hour, timeinfo.tm_min);
       if (estadoRele != deveLigar) {
-        acionarReleComMotivo(deveLigar, deveLigar ? "Horario Programado (17:00 as 05:00)" : "Fim do Fotoperiodo (05:00)");
+        acionarReleComMotivo(deveLigar, deveLigar ? "Horario Programado (05:00 as 17:00)" : "Fim do Fotoperiodo (17:00)");
       }
     }
   }
@@ -592,8 +596,8 @@ void loop() {
     }
   }
 
-  // 4. TRANSMISSÃO DE TELEMETRIA E RECEBIMENTO DE COMANDOS (A cada 3 segundos)
-  if (tempoAtual - ultimoTempoTelemetria >= 3000) {
+  // 4. TRANSMISSÃO DE TELEMETRIA E RECEBIMENTO DE COMANDOS (A cada 1 segundo para resposta imediata)
+  if (tempoAtual - ultimoTempoTelemetria >= 1000) {
     ultimoTempoTelemetria = tempoAtual;
     enviarTelemetriaServidor();
   }
