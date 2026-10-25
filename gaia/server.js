@@ -167,29 +167,49 @@ async function initDatabase() {
       ALTER TABLE gaia_estacoes ADD COLUMN IF NOT EXISTS cultura_id INT REFERENCES gaia_culturas_perfil(id);
     `);
 
-    // 4. Criação da Conta Master Solicitada
-    const emailMaster = 'cardosoleonardo1327@gmail.com';
-    const senhaMaster = 'swordfish';
-    const hash = bcrypt.hashSync(senhaMaster, 10);
+    // 4. Contas de Acesso Padrão (Administrador e Usuário Operador)
+    // Permite customização segura via variáveis de ambiente
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@gaia.agro.br';
+    const adminSenha = process.env.ADMIN_PASSWORD || 'GaiaAdmin2026!';
+    const adminHash = bcrypt.hashSync(adminSenha, 10);
 
-    const userCheck = await pool.query('SELECT * FROM gaia_usuarios WHERE email = $1', [emailMaster]);
-    let masterUserId = null;
-    if (userCheck.rows.length === 0) {
-      const inserted = await pool.query(`
+    const userEmail = process.env.DEMO_USER_EMAIL || 'usuario@gaia.agro.br';
+    const userSenha = process.env.DEMO_USER_PASSWORD || 'GaiaUser2026!';
+    const userHash = bcrypt.hashSync(userSenha, 10);
+
+    // Limpeza de contas administrativas antigas que não correspondam ao padrão configurado
+    await pool.query("DELETE FROM gaia_usuarios WHERE email NOT IN ($1, $2)", [adminEmail, userEmail]);
+
+    // Criação/Atualização da Conta Administrador
+    const adminCheck = await pool.query('SELECT * FROM gaia_usuarios WHERE email = $1', [adminEmail]);
+    if (adminCheck.rows.length === 0) {
+      await pool.query(`
         INSERT INTO gaia_usuarios (nome, email, senha_hash, role)
-        VALUES ($1, $2, $3, 'ADMIN')
-        RETURNING id;
-      `, ['Leonardo Cardoso (Master)', emailMaster, hash]);
-      masterUserId = inserted.rows[0].id;
-      console.log(`[AUTH] Conta Master criada com sucesso: ${emailMaster}`);
+        VALUES ($1, $2, $3, 'ADMIN');
+      `, ['Administrador GAIA', adminEmail, adminHash]);
+      console.log(`[AUTH] Conta Administrador inicializada: ${adminEmail}`);
     } else {
-      masterUserId = userCheck.rows[0].id;
       await pool.query(`
         UPDATE gaia_usuarios 
         SET senha_hash = $1, role = 'ADMIN' 
         WHERE email = $2
-      `, [hash, emailMaster]);
-      console.log(`[AUTH] Conta Master verificada/atualizada: ${emailMaster}`);
+      `, [adminHash, adminEmail]);
+    }
+
+    // Criação/Atualização de Conta de Usuário Padrão / Demonstração
+    const userCheck = await pool.query('SELECT * FROM gaia_usuarios WHERE email = $1', [userEmail]);
+    if (userCheck.rows.length === 0) {
+      await pool.query(`
+        INSERT INTO gaia_usuarios (nome, email, senha_hash, role)
+        VALUES ($1, $2, $3, 'USER');
+      `, ['Operador / Usuário GAIA', userEmail, userHash]);
+      console.log(`[AUTH] Conta de Usuário inicializada: ${userEmail}`);
+    } else {
+      await pool.query(`
+        UPDATE gaia_usuarios 
+        SET senha_hash = $1, role = 'USER' 
+        WHERE email = $2
+      `, [userHash, userEmail]);
     }
 
     // 5. Registro Exclusivo da Estação Real G00001 (Remoção de estações fake)

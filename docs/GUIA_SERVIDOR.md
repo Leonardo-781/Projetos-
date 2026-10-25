@@ -48,8 +48,7 @@ A aplicação foi reconstruída em **React + Vite + Tailwind CSS + Leaflet**, se
 Todos os serviços rodam em containers **Docker** isolados, orquestrados pelo arquivo `/home/leo/server/docker-compose.yml`.
 
 | Serviço | Acesso Local | Acesso Tailscale | Acesso Público (Mundial) | Notas / Credenciais |
-| :--- | :--- | :--- | :--- | :--- |
-| **ATGH2O / GAIA** (React + API) | `http://192.168.0.105:3000` | `http://100.126.236.22:3000` | [Link Cloudflare](https://reviews-responsible-approval-beautiful.trycloudflare.com) | Sistema completo com Mapa Satélite em Tela Cheia e Telemetria |
+| **ATGH2O / GAIA** (React + API) | `http://192.168.0.105:3000` | `http://100.126.236.22:3000` | [Link Cloudflare](https://reviews-responsible-approval-beautiful.trycloudflare.com) | Sistema completo com Mapa Satélite e Telemetria.<br>**Usuário:** `usuario@gaia.agro.br` (Senha: `GaiaUser2026!`)<br>**Admin:** `admin@gaia.agro.br` (Senha: `GaiaAdmin2026!`) |
 | **Portainer** (Gestão Docker) | `http://192.168.0.105:9000` | `http://100.126.236.22:9000` | -- | Painel gráfico para gerenciar containers |
 | **Nginx Proxy Manager** (SSL/Proxy) | `http://192.168.0.105:81` | `http://100.126.236.22:81` | -- | **Email:** `admin@example.com`<br>**Senha:** `changeme` |
 | **Adminer** (Visualizador Web BD) | `http://192.168.0.105:8080` | `http://100.126.236.22:8080` | -- | Sistema: PostgreSQL<br>Servidor: `postgres`<br>Usuário: `server_admin`<br>Senha: `server_password_123`<br>Banco: `app_db` |

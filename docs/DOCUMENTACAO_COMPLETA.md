@@ -92,6 +92,16 @@ Toda a camada de software roda isolada através do **Docker CE 29.8** e **Docker
 > [!IMPORTANT]
 > Recomenda-se alterar as senhas padrão no primeiro acesso através das interfaces web correspondentes.
 
+* **Sistema GAIA (Plataforma Web / Dashboard):**
+  * Painel Web: `http://192.168.0.105:3000` (ou via túnel público)
+  * **Usuário Padrão / Demonstração:**
+    * Email: `usuario@gaia.agro.br`
+    * Senha: `GaiaUser2026!`
+    * Permissão: Visualização de estações públicas, telemetria e gráficos agronômicos
+  * **Administrador / Gestor Técnico:**
+    * Email: `admin@gaia.agro.br` (configurável via variável `ADMIN_EMAIL`)
+    * Senha: `GaiaAdmin2026!` (configurável via variável `ADMIN_PASSWORD`)
+    * Permissão: Gestão de estações, desbloqueio financeiro e catálogo de culturas
 * **PostgreSQL:**
   * Host interno (Docker): `postgres`
   * Host externo: `192.168.0.105` ou `100.126.236.22`
