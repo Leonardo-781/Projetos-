@@ -1,0 +1,129 @@
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data/portainer:/data
+    ports:
+      - '9000:9000'
+      - '9443:9443'
+    networks:
+      - server_network
+
+  nginx-proxy-manager:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: nginx-proxy-manager
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    volumes:
+      - ./data/npm/data:/data
+      - ./data/npm/letsencrypt:/etc/letsencrypt
+    networks:
+      - server_network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: server_admin
+      POSTGRES_PASSWORD: server_password_123
+      POSTGRES_DB: app_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - server_network
+
+  adminer:
+    image: adminer:latest
+    container_name: adminer
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    depends_on:
+      - postgres
+    networks:
+      - server_network
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - '1883:1883'
+      - '9001:9001'
+    volumes:
+      - ./data/mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./data/mosquitto/data:/mosquitto/data
+      - ./data/mosquitto/log:/mosquitto/log
+    networks:
+      - server_network
+
+  # 6. Sistema Web & API de Telemetria do Projeto GAIA
+  gaia:
+    build: ./apps/gaia
+    container_name: gaia-server
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      - PORT=3000
+      - DATABASE_URL=postgresql://server_admin:server_password_123@postgres:5432/app_db
+      - AES_KEY=GaiaAgroIoT2026!
+      - GAIA_PROJECT_TOKEN=GAIA_TOKEN_2026_AGRO
+    depends_on:
+      - postgres
+    networks:
+      - server_network
+
+  # 7. Central Agroclimatica (Estufa Inteligente & Regulador Termico)
+  agroclima:
+    build: ./apps/agroclima
+    container_name: agroclima-server
+    volumes:
+      - ./apps/agroclima:/app
+      - /app/node_modules
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgresql://server_admin:server_password_123@postgres:5432/app_db
+    depends_on:
+      - postgres
+    networks:
+      - server_network
+
+  # 8. Sistema de Bate Ponto Eletrônico STI (ESP32 IoT + Dashboard)
+  ponto:
+    build: ./apps/ponto
+    container_name: ponto-server
+    volumes:
+      - ./apps/ponto:/app
+      - /app/node_modules
+    restart: unless-stopped
+    ports:
+      - '3002:3002'
+    environment:
+      - PORT=3002
+      - DATABASE_URL=postgresql://server_admin:server_password_123@postgres:5432/app_db
+      - DEVICE_TOKEN=STI_PONTO_ESP32_SECRET_KEY
+    depends_on:
+      - postgres
+    networks:
+      - server_network
+
+networks:
+  server_network:
+    name: server_network
+    driver: bridge

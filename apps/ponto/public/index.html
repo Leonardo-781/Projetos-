@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MonteBot • Ponto Inteligente</title>
+  
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              900: '#064e3b'
+            },
+            surface: {
+              base: '#080c14',
+              card: '#0f172a',
+              cardHover: '#131e36',
+              border: 'rgba(255, 255, 255, 0.08)',
+              borderFocus: 'rgba(16, 185, 129, 0.5)'
+            }
+          },
+          boxShadow: {
+            'glow-emerald': '0 0 35px -5px rgba(16, 185, 129, 0.25)',
+            'glow-cyan': '0 0 35px -5px rgba(6, 182, 212, 0.25)',
+            'glow-violet': '0 0 35px -5px rgba(139, 92, 246, 0.25)',
+            'glow-card': '0 10px 30px -10px rgba(0, 0, 0, 0.5)'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Background Mesh Gradient */
+    body {
+      background-color: #080c14;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.08) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.06) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(139, 92, 246, 0.05) 0px, transparent 50%);
+      background-attachment: fixed;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #080c14;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+
+    /* Glass Cards */
+    .glass-card {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    .glass-card:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    /* Gradient borders */
+    .border-gradient {
+      border-image: linear-gradient(to right, rgba(16, 185, 129, 0.3), rgba(6, 182, 212, 0.1), transparent) 1;
+    }
+  </style>
+</head>
+<body class="text-slate-100 min-h-screen font-sans antialiased selection:bg-emerald-500 selection:text-slate-950">
+
+  <!-- TOP BAR / HEADER -->
+  <header class="border-b border-white/[0.08] bg-slate-950/70 backdrop-blur-xl sticky top-0 z-40 transition-all">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+      
+      <!-- Brand & Status -->
+      <div class="flex items-center gap-3.5">
+        <div class="relative group">
+          <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-400 p-[1px] shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/40 transition-all duration-300">
+            <div class="w-full h-full bg-slate-950/90 rounded-[15px] flex items-center justify-center backdrop-blur-sm">
+              <i data-lucide="fingerprint" class="w-6 h-6 text-emerald-400"></i>
+            </div>
+          </div>
+          <span class="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-slate-950"></span>
+          </span>
+        </div>
+        
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">
+              MonteBot
+            </h1>
+            <span class="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              Ponto IoT
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 font-medium">Laboratório de Robótica & Automação</p>
+        </div>
+      </div>
+
+      <!-- Controls: Clock, Date Picker, Refresh & Auth -->
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        
+        <!-- Live Clock Pill -->
+        <div class="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-white/[0.06] shadow-inner font-mono text-xs">
+          <i data-lucide="clock" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span id="relogioAoVivo" class="font-bold text-slate-200">--:--:--</span>
+          <span class="text-slate-600">|</span>
+          <span id="dataAtualFormatada" class="text-slate-400 text-[11px] font-sans">Hoje</span>
+        </div>
+
+        <!-- Date Selector Filter -->
+        <div class="relative">
+          <input type="date" id="filtroData" class="bg-slate-900/90 hover:bg-slate-800/90 border border-white/[0.08] hover:border-emerald-500/50 text-xs text-slate-200 font-medium rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all cursor-pointer">
+        </div>
+
+        <!-- Refresh Button -->
+        <button onclick="carregarDadosDashboard()" class="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white transition-all border border-white/[0.08] flex items-center gap-1.5 active:scale-95" title="Sincronizar agora">
+          <i data-lucide="refresh-cw" class="w-4 h-4" id="refreshIcon"></i>
+          <span class="text-xs font-semibold hidden md:inline">Atualizar</span>
+        </button>
+
+        <!-- Auth Section -->
+        <div id="areaLoginNaoAutenticado">
+          <button onclick="abrirModalLogin()" class="flex items-center gap-1.5 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-slate-200 hover:text-white border border-white/[0.1] font-semibold px-3.5 py-2 rounded-xl text-xs transition-all shadow-sm active:scale-95">
+            <i data-lucide="shield-lock" class="w-4 h-4 text-amber-400"></i>
+            <span>Área do Gestor</span>
+          </button>
+        </div>
+
+        <div id="areaLoginAutenticado" class="hidden flex items-center gap-2">
+          <button onclick="abrirModalNovoUsuario()" class="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">Novo Colaborador</span>
+          </button>
+          
+          <div class="flex items-center gap-2 pl-2 border-l border-white/[0.08]">
+            <div class="text-right hidden sm:block">
+              <div id="nomeUsuarioLogado" class="text-xs font-bold text-white truncate max-w-[120px]">Admin</div>
+              <span class="text-[9px] text-emerald-400 font-mono font-bold tracking-wider">GESTOR</span>
+            </div>
+            <button onclick="fazerLogout()" class="p-2 rounded-xl bg-slate-900/90 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-white/[0.08] transition-all" title="Sair da conta">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- KPI STATS CARDS (HERO CARDS) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      
+      <!-- Card 1: Somatório do Dia -->
+      <div class="glass-card p-5 sm:p-6 rounded-2xl relative overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:shadow-glow-emerald">
+        <div class="absolute -top-12 -right-12 w-28 h-28 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
+        <div class="flex items-center justify-between relative z-10">
+          <span class="text-xs font-semibold text-slate-400 tracking-wider uppercase">Somatório do Dia</span>
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <i data-lucide="timer" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="mt-4 flex items-baseline gap-2 relative z-10">
+          <span id="kpiSomatorioHoras" class="text-3xl font-extrabold text-white tracking-tight font-mono">00h 00m</span>
+        </div>
+        <div class="mt-2 flex items-center gap-1.5 text-xs text-slate-400 relative z-10">
+          <span class="text-emerald-400 font-semibold flex items-center gap-0.5">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Total da Equipe
+          </span>
+          <span>• sem limites rígidos</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Presentes Agora -->
+      <div class="glass-card p-5 sm:p-6 rounded-2xl relative overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:shadow-glow-cyan">
+        <div class="absolute -top-12 -right-12 w-28 h-28 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-all"></div>
+        <div class="flex items-center justify-between relative z-10">
+          <span class="text-xs font-semibold text-slate-400 tracking-wider uppercase">Presentes Agora</span>
+          <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center">
+            <i data-lucide="user-check" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="mt-4 flex items-baseline gap-2 relative z-10">
+          <span id="kpiPresentesAgora" class="text-3xl font-extrabold text-cyan-400 tracking-tight font-mono">0</span>
+          <span class="text-xs text-slate-400 font-medium">no laboratório</span>
+        </div>
+        <div class="mt-2 flex items-center gap-2 text-xs text-slate-400 relative z-10">
+          <span class="inline-flex items-center gap-1.5 text-emerald-400 font-medium">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Em expediente ativo
+          </span>
+        </div>
+      </div>
+
+      <!-- Card 3: Batidas Hoje -->
+      <div class="glass-card p-5 sm:p-6 rounded-2xl relative overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:shadow-card">
+        <div class="absolute -top-12 -right-12 w-28 h-28 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all"></div>
+        <div class="flex items-center justify-between relative z-10">
+          <span class="text-xs font-semibold text-slate-400 tracking-wider uppercase">Batidas Hoje</span>
+          <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
+            <i data-lucide="zap" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="mt-4 flex items-baseline gap-2 relative z-10">
+          <span id="kpiTotalBatidas" class="text-3xl font-extrabold text-blue-400 tracking-tight font-mono">0</span>
+          <span class="text-xs text-slate-400 font-medium">registros</span>
+        </div>
+        <div class="mt-2 text-xs text-slate-400 relative z-10">
+          Entradas e saídas validadas
+        </div>
+      </div>
+
+      <!-- Card 4: Colaboradores Ativos -->
+      <div class="glass-card p-5 sm:p-6 rounded-2xl relative overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:shadow-glow-violet">
+        <div class="absolute -top-12 -right-12 w-28 h-28 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all"></div>
+        <div class="flex items-center justify-between relative z-10">
+          <span class="text-xs font-semibold text-slate-400 tracking-wider uppercase">Equipe MonteBot</span>
+          <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center">
+            <i data-lucide="users" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="mt-4 flex items-baseline gap-2 relative z-10">
+          <span id="kpiTotalColaboradores" class="text-3xl font-extrabold text-purple-300 tracking-tight font-mono">0</span>
+          <span class="text-xs text-slate-400 font-medium">membros</span>
+        </div>
+        <div class="mt-2 text-xs text-slate-400 relative z-10">
+          Pesquisadores e operadores
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SEÇÃO: ESPELHO DE PONTO INDIVIDUAL -->
+    <section class="glass-card rounded-2xl p-6 sm:p-7 space-y-6 shadow-glow-card">
+      
+      <!-- Toolbar: Title, View Switcher & Search Filter -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
+        <div>
+          <h2 class="text-lg font-bold text-white flex items-center gap-2.5">
+            <i data-lucide="layout-grid" class="w-5 h-5 text-emerald-400"></i>
+            Espelho de Horas do Dia
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">Acompanhamento transparente das horas trabalhadas por cada colaborador</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- View Mode Toggle (Cards vs Table) -->
+          <div class="flex items-center bg-slate-900/90 p-1 rounded-xl border border-white/[0.08]">
+            <button id="btnModoCards" onclick="alternarModoVisualizacao('cards')" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <i data-lucide="grid" class="w-3.5 h-3.5"></i>
+              <span>Cards</span>
+            </button>
+            <button id="btnModoTabela" onclick="alternarModoVisualizacao('tabela')" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-slate-400 hover:text-slate-200">
+              <i data-lucide="table" class="w-3.5 h-3.5"></i>
+              <span>Tabela</span>
+            </button>
+          </div>
+
+          <!-- Quick Search -->
+          <div class="relative flex-1 sm:flex-initial">
+            <input type="text" id="buscaColaborador" oninput="filtrarTabela()" placeholder="Filtrar por nome ou matrícula..." class="bg-slate-900/90 border border-white/[0.08] focus:border-emerald-500/60 text-xs text-slate-200 placeholder-slate-500 rounded-xl pl-9 pr-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 w-full sm:w-64 transition-all">
+            <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 1: GRID DE CARDS (VISUAL MODERNO SAAS) -->
+      <div id="gridCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Renderizado dinamicamente via JS -->
+      </div>
+
+      <!-- VIEW 2: TABELA DETALHADA -->
+      <div id="tabelaContainer" class="hidden overflow-x-auto rounded-xl border border-white/[0.06]">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/90 text-slate-400 uppercase tracking-wider font-semibold border-b border-white/[0.08]">
+            <tr>
+              <th class="px-4 py-3.5">Colaborador</th>
+              <th class="px-4 py-3.5">Setor & Cargo</th>
+              <th class="px-4 py-3.5 font-mono">1ª Entrada</th>
+              <th class="px-4 py-3.5 font-mono">Última Saída</th>
+              <th class="px-4 py-3.5 font-mono">Horas no Dia</th>
+              <th class="px-4 py-3.5 text-center">Status</th>
+              <th class="px-4 py-3.5 text-center">Alerta / Obs</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaEspelhoCorpo" class="divide-y divide-white/[0.04]">
+            <tr>
+              <td colspan="7" class="px-4 py-8 text-center text-slate-500">Carregando dados...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+    <!-- SEÇÃO: FEED DE ATIVIDADES EM TEMPO REAL -->
+    <section class="glass-card rounded-2xl p-6 sm:p-7 space-y-5 shadow-glow-card">
+      <div class="flex items-center justify-between border-b border-white/[0.08] pb-4">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i data-lucide="activity" class="w-5 h-5 text-cyan-400"></i>
+            Feed de Batidas em Tempo Real
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">Eventos transmitidos instantaneamente pelos totens ESP32</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Sincronismo Ativo</span>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto max-h-[380px] rounded-xl border border-white/[0.06]">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/90 text-slate-400 uppercase tracking-wider font-semibold border-b border-white/[0.08] sticky top-0 backdrop-blur">
+            <tr>
+              <th class="px-4 py-3">Horário</th>
+              <th class="px-4 py-3">Colaborador</th>
+              <th class="px-4 py-3">Ação</th>
+              <th class="px-4 py-3">Método</th>
+              <th class="px-4 py-3 font-mono">Tag / Chave</th>
+              <th class="px-4 py-3 text-center">Origem / Status</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaFeedCorpo" class="divide-y divide-white/[0.04]">
+            <tr>
+              <td colspan="6" class="px-4 py-8 text-center text-slate-500">Aguardando batidas...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: LOGIN DO GESTOR -->
+  <div id="modalLogin" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 transition-all">
+    <div class="bg-slate-900 border border-white/[0.1] rounded-3xl max-w-sm w-full p-6 sm:p-7 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+      
+      <div class="flex items-center justify-between border-b border-white/[0.08] pb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+            <i data-lucide="shield" class="w-4 h-4"></i>
+          </div>
+          <h3 class="text-sm font-bold text-white">Área do Gestor</h3>
+        </div>
+        <button onclick="fecharModalLogin()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-all">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="formLogin" onsubmit="realizarLogin(event)" class="space-y-4 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1.5 font-medium">E-mail do Administrador</label>
+          <input type="email" id="loginEmail" required placeholder="cardosoleonardo1327@gmail.com" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1.5 font-medium">Senha de Acesso</label>
+          <input type="password" id="loginSenha" required placeholder="••••••••" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all font-mono">
+        </div>
+
+        <div id="msgErroLogin" class="hidden text-rose-400 text-xs bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl font-medium"></div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="fecharModalLogin()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition-all">Cancelar</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold shadow-lg shadow-emerald-500/20 transition-all active:scale-95">Acessar Painel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CADASTRAR NOVO COLABORADOR -->
+  <div id="modalNovoUsuario" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 transition-all">
+    <div class="bg-slate-900 border border-white/[0.1] rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+      
+      <div class="flex items-center justify-between border-b border-white/[0.08] pb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Cadastrar Novo Colaborador</h3>
+            <p class="text-[11px] text-slate-400">Adicione um novo membro da equipe MonteBot</p>
+          </div>
+        </div>
+        <button onclick="fecharModalNovoUsuario()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-all">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="formNovoUsuario" onsubmit="salvarNovoUsuario(event)" class="space-y-4 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1.5 font-medium">Nome Completo</label>
+          <input type="text" id="cadNome" required placeholder="Ex: Maria Clara Silva" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3.5">
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">Matrícula</label>
+            <input type="text" id="cadMatricula" required placeholder="Ex: MB005" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">Setor</label>
+            <input type="text" id="cadSetor" value="MonteBot" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3.5">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-slate-400 font-medium">Tag RFID (Hex)</label>
+              <button type="button" onclick="capturarUltimaTag()" class="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-0.5 rounded-lg border border-emerald-500/30 transition-all" title="Captura o último cartão aproximado no ESP32">
+                <i data-lucide="zap" class="w-3 h-3"></i> <span>Capturar</span>
+              </button>
+            </div>
+            <input type="text" id="cadTag" placeholder="Ex: 04A2B3C4" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white font-mono uppercase placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+            <span id="msgTagCapturada" class="text-[10px] text-emerald-400 hidden mt-1 block font-medium"></span>
+          </div>
+
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">Senha Numérica (Teclado)</label>
+            <input type="password" id="cadSenha" maxlength="8" placeholder="Ex: 1234" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3.5">
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">Cargo</label>
+            <input type="text" id="cadCargo" placeholder="Ex: Bolsista / Pesquisador" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">Nível de Permissão</label>
+            <select id="cadNivel" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition-all">
+              <option value="OPERADOR">OPERADOR (Padrão)</option>
+              <option value="ADMIN">ADMIN (Pode criar usuários)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1.5 font-medium">E-mail (Necessário se for Administrador)</label>
+          <input type="email" id="cadEmail" placeholder="usuario@montebot.com.br" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+        </div>
+
+        <div class="flex justify-end gap-2.5 pt-3 border-t border-white/[0.08]">
+          <button type="button" onclick="fecharModalNovoUsuario()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition-all">Cancelar</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold shadow-lg shadow-emerald-500/20 transition-all active:scale-95">Salvar Colaborador</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+  <!-- JAVASCRIPT DO DASHBOARD -->
+  <script>
+    let dadosEspelhoCache = [];
+    let modoVisualizacao = 'cards'; // 'cards' | 'tabela'
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const hoje = new Date().toISOString().slice(0, 10);
+      document.getElementById('filtroData').value = hoje;
+      document.getElementById('dataAtualFormatada').textContent = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+
+      setInterval(atualizarRelogio, 1000);
+      atualizarRelogio();
+
+      verificarSessao();
+      carregarDadosDashboard();
+      carregarFeedRegistros();
+
+      // Atualização contínua a cada 4 segundos
+      setInterval(() => {
+        carregarDadosDashboard(false);
+        carregarFeedRegistros(false);
+      }, 4000);
+
+      document.getElementById('filtroData').addEventListener('change', () => {
+        carregarDadosDashboard(true);
+      });
+    });
+
+    function atualizarRelogio() {
+      const agora = new Date();
+      document.getElementById('relogioAoVivo').textContent = agora.toLocaleTimeString('pt-BR');
+    }
+
+    function showToast(msg, tipo = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      const cores = {
+        success: 'border-emerald-500/40 bg-slate-900/95 text-emerald-400 shadow-emerald-500/10',
+        error: 'border-rose-500/40 bg-slate-900/95 text-rose-400 shadow-rose-500/10',
+        info: 'border-cyan-500/40 bg-slate-900/95 text-cyan-400 shadow-cyan-500/10'
+      };
+
+      const icones = {
+        success: 'check-circle',
+        error: 'alert-circle',
+        info: 'info'
+      };
+
+      toast.className = `pointer-events-auto flex items-center gap-3 p-4 rounded-2xl border ${cores[tipo] || cores.info} shadow-xl backdrop-blur-md text-xs font-medium transition-all duration-300 transform translate-y-3 opacity-0`;
+      toast.innerHTML = `
+        <i data-lucide="${icones[tipo] || 'info'}" class="w-4 h-4 shrink-0"></i>
+        <div class="flex-1 text-slate-200">${msg}</div>
+      `;
+
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-3', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function alternarModoVisualizacao(modo) {
+      modoVisualizacao = modo;
+      const btnCards = document.getElementById('btnModoCards');
+      const btnTabela = document.getElementById('btnModoTabela');
+      const containerCards = document.getElementById('gridCardsContainer');
+      const containerTabela = document.getElementById('tabelaContainer');
+
+      if (modo === 'cards') {
+        btnCards.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+        btnTabela.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-slate-400 hover:text-slate-200';
+        containerCards.classList.remove('hidden');
+        containerTabela.classList.add('hidden');
+      } else {
+        btnTabela.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+        btnCards.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-slate-400 hover:text-slate-200';
+        containerTabela.classList.remove('hidden');
+        containerCards.classList.add('hidden');
+      }
+
+      filtrarTabela();
+    }
+
+    // =========================================================================
+    // SESSÃO E AUTENTICAÇÃO
+    // =========================================================================
+    async function verificarSessao() {
+      const token = localStorage.getItem('ponto_token');
+      if (!token) {
+        mostrarEstadoNaoLogado();
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/usuario/me', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.logado && data.usuario.nivel === 'ADMIN') {
+          mostrarEstadoLogado(data.usuario.nome);
+        } else {
+          mostrarEstadoNaoLogado();
+        }
+      } catch (e) {
+        mostrarEstadoNaoLogado();
+      }
+    }
+
+    function mostrarEstadoLogado(nome) {
+      document.getElementById('areaLoginNaoAutenticado').classList.add('hidden');
+      document.getElementById('areaLoginAutenticado').classList.remove('hidden');
+      document.getElementById('nomeUsuarioLogado').textContent = nome;
+      lucide.createIcons();
+    }
+
+    function mostrarEstadoNaoLogado() {
+      document.getElementById('areaLoginNaoAutenticado').classList.remove('hidden');
+      document.getElementById('areaLoginAutenticado').classList.add('hidden');
+      lucide.createIcons();
+    }
+
+    function abrirModalLogin() {
+      document.getElementById('msgErroLogin').classList.add('hidden');
+      document.getElementById('modalLogin').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function fecharModalLogin() {
+      document.getElementById('modalLogin').classList.add('hidden');
+      document.getElementById('formLogin').reset();
+    }
+
+    async function realizarLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const senha = document.getElementById('loginSenha').value;
+      const msgErro = document.getElementById('msgErroLogin');
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, senha })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.sucesso) {
+          msgErro.textContent = data.erro || 'Credenciais inválidas';
+          msgErro.classList.remove('hidden');
+          return;
+        }
+
+        if (data.usuario.nivel !== 'ADMIN') {
+          msgErro.textContent = 'Permissão insuficiente. Apenas Administradores podem gerenciar a equipe.';
+          msgErro.classList.remove('hidden');
+          return;
+        }
+
+        localStorage.setItem('ponto_token', data.token);
+        fecharModalLogin();
+        mostrarEstadoLogado(data.usuario.nome);
+        showToast(`Bem-vindo de volta, ${data.usuario.nome}!`, 'success');
+      } catch (err) {
+        msgErro.textContent = 'Erro ao conectar ao servidor';
+        msgErro.classList.remove('hidden');
+      }
+    }
+
+    async function fazerLogout() {
+      const token = localStorage.getItem('ponto_token');
+      if (token) {
+        await fetch('/api/logout', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+      }
+      localStorage.removeItem('ponto_token');
+      mostrarEstadoNaoLogado();
+      showToast('Sessão encerrada com sucesso', 'info');
+    }
+
+    // =========================================================================
+    // CARREGAR DADOS DO DASHBOARD
+    // =========================================================================
+    async function carregarDadosDashboard(animarIcone = true) {
+      const dataFiltro = document.getElementById('filtroData').value;
+      const icon = document.getElementById('refreshIcon');
+      if (animarIcone && icon) icon.classList.add('animate-spin');
+
+      try {
+        const res = await fetch(`/api/dashboard?data=${dataFiltro}`);
+        if (!res.ok) throw new Error('Erro na requisição');
+        const data = await res.json();
+
+        document.getElementById('kpiSomatorioHoras').textContent = data.somatorioHorasEquipe || '00h 00m';
+        document.getElementById('kpiPresentesAgora').textContent = data.presentesAgora;
+        document.getElementById('kpiTotalBatidas').textContent = data.totalBatidasHoje;
+        document.getElementById('kpiTotalColaboradores').textContent = data.totalColaboradores;
+
+        dadosEspelhoCache = data.espelho || [];
+        filtrarTabela();
+
+      } catch (e) {
+        console.error('Falha ao carregar dashboard', e);
+      } finally {
+        if (animarIcone && icon) icon.classList.remove('animate-spin');
+      }
+    }
+
+    // Gerador de iniciais para avatar
+    function obterIniciais(nome) {
+      if (!nome) return 'MB';
+      const partes = nome.trim().split(' ');
+      if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+      return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+    }
+
+    function renderizarCards(lista) {
+      const container = document.getElementById('gridCardsContainer');
+      if (lista.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-12 text-center text-slate-500 flex flex-col items-center justify-center gap-2">
+            <i data-lucide="user-x" class="w-8 h-8 text-slate-600"></i>
+            <p>Nenhum colaborador encontrado para os filtros selecionados.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      container.innerHTML = lista.map(u => {
+        const iniciais = obterIniciais(u.nome);
+        
+        let statusTag = '';
+        let statusBorder = 'border-white/[0.06]';
+        let avatarBg = 'from-slate-700 to-slate-800 text-slate-300';
+
+        if (u.statusAtual === 'Trabalhando') {
+          statusTag = `
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Presente
+            </span>
+          `;
+          statusBorder = 'border-emerald-500/30 shadow-glow-emerald';
+          avatarBg = 'from-emerald-500 to-teal-600 text-slate-950 font-extrabold';
+        } else if (u.statusAtual === 'Finalizado') {
+          statusTag = `
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              <i data-lucide="check" class="w-3 h-3"></i> Finalizado
+            </span>
+          `;
+          avatarBg = 'from-blue-600 to-indigo-700 text-white';
+        } else {
+          statusTag = `
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 text-slate-400 border border-slate-700/50">
+              Ausente
+            </span>
+          `;
+        }
+
+        const autoCloseWarning = u.teveFechamentoAutomatico
+          ? `<div class="mt-3 py-1.5 px-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px] font-medium flex items-center gap-1.5">
+               <i data-lucide="alert-triangle" class="w-3.5 h-3.5 shrink-0"></i>
+               <span>Ponto encerrado pela regra de 8h</span>
+             </div>`
+          : '';
+
+        return `
+          <div class="glass-card p-5 rounded-2xl border ${statusBorder} hover:border-white/[0.15] transition-all duration-200 flex flex-col justify-between">
+            <div>
+              <!-- Header do Card: Avatar, Nome e Status -->
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr ${avatarBg} flex items-center justify-center font-bold text-sm shadow-md">
+                    ${iniciais}
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-white text-sm tracking-tight leading-tight">${u.nome}</h3>
+                    <div class="flex items-center gap-2 mt-0.5">
+                      <span class="text-[10px] font-mono font-medium text-slate-400">${u.matricula}</span>
+                      <span class="text-slate-600">•</span>
+                      <span class="text-[10px] text-slate-400 font-medium">${u.cargo || u.setor}</span>
+                    </div>
+                  </div>
+                </div>
+                ${statusTag}
+              </div>
+
+              <!-- Batidas do Dia (Horários) -->
+              <div class="mt-4 pt-3 border-t border-white/[0.06] grid grid-cols-2 gap-2 text-xs">
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-white/[0.04]">
+                  <span class="text-[10px] text-slate-500 uppercase font-semibold block">1ª Entrada</span>
+                  <span class="font-mono font-bold text-emerald-400 text-sm">${u.primeiraEntrada}</span>
+                </div>
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-white/[0.04]">
+                  <span class="text-[10px] text-slate-500 uppercase font-semibold block">Última Saída</span>
+                  <span class="font-mono font-bold text-blue-400 text-sm">${u.ultimaSaida}</span>
+                </div>
+              </div>
+
+              ${autoCloseWarning}
+            </div>
+
+            <!-- Footer: Saldo de Horas -->
+            <div class="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+              <span class="text-xs font-medium text-slate-400">Total no Dia:</span>
+              <span class="font-mono font-extrabold text-base text-white bg-slate-900/80 px-3 py-1 rounded-xl border border-white/[0.06]">
+                ${u.horasFormatadas}
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function renderizarTabela(lista) {
+      const corpo = document.getElementById('tabelaEspelhoCorpo');
+      if (lista.length === 0) {
+        corpo.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">Nenhum colaborador encontrado.</td></tr>`;
+        return;
+      }
+
+      corpo.innerHTML = lista.map(u => {
+        let statusBadge = '';
+        if (u.statusAtual === 'Trabalhando') {
+          statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Trabalhando</span>`;
+        } else if (u.statusAtual === 'Finalizado') {
+          statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">Finalizado</span>`;
+        } else {
+          statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-400 border border-slate-700">Ausente</span>`;
+        }
+
+        const autoCloseBadge = u.teveFechamentoAutomatico
+          ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30"><i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Fechamento Auto</span>`
+          : `<span class="text-slate-600 text-xs">--</span>`;
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition-colors">
+            <td class="px-4 py-3.5 font-semibold text-white">
+              <div>${u.nome}</div>
+              <div class="text-[10px] text-slate-400 font-mono">${u.matricula}</div>
+            </td>
+            <td class="px-4 py-3.5 text-slate-300">
+              <div>${u.setor}</div>
+              <div class="text-[11px] text-slate-500">${u.cargo || ''}</div>
+            </td>
+            <td class="px-4 py-3.5 font-mono text-emerald-400 font-bold">${u.primeiraEntrada}</td>
+            <td class="px-4 py-3.5 font-mono text-blue-400 font-bold">${u.ultimaSaida}</td>
+            <td class="px-4 py-3.5 font-mono text-white text-sm font-extrabold">${u.horasFormatadas}</td>
+            <td class="px-4 py-3.5 text-center">${statusBadge}</td>
+            <td class="px-4 py-3.5 text-center">${autoCloseBadge}</td>
+          </tr>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function filtrarTabela() {
+      const termo = document.getElementById('buscaColaborador').value.toLowerCase();
+      const filtrados = dadosEspelhoCache.filter(u => 
+        u.nome.toLowerCase().includes(termo) || 
+        u.matricula.toLowerCase().includes(termo) ||
+        u.setor.toLowerCase().includes(termo) ||
+        (u.cargo && u.cargo.toLowerCase().includes(termo))
+      );
+
+      if (modoVisualizacao === 'cards') {
+        renderizarCards(filtrados);
+      } else {
+        renderizarTabela(filtrados);
+      }
+    }
+
+    // =========================================================================
+    // FEED DE ATIVIDADES EM TEMPO REAL
+    // =========================================================================
+    async function carregarFeedRegistros() {
+      try {
+        const res = await fetch('/api/registros?limit=15');
+        if (!res.ok) return;
+        const registros = await res.json();
+        const corpo = document.getElementById('tabelaFeedCorpo');
+
+        if (registros.length === 0) {
+          corpo.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Nenhum evento registrado ainda.</td></tr>`;
+          return;
+        }
+
+        corpo.innerHTML = registros.map(r => {
+          const dt = new Date(r.data_hora_dispositivo);
+          const hora = dt.toLocaleTimeString('pt-BR');
+          const data = dt.toLocaleDateString('pt-BR');
+
+          const tipoBadge = r.status_batida === 'aberta'
+            ? `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 w-fit"><i data-lucide="log-in" class="w-3 h-3"></i> Entrada</span>`
+            : `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30 flex items-center gap-1 w-fit"><i data-lucide="log-out" class="w-3 h-3"></i> Saída</span>`;
+
+          const modoBadge = r.fechamento_automatico
+            ? `<span class="inline-flex items-center gap-1 text-[11px] text-amber-400 font-semibold" title="Encerrado por ultrapassar 8 horas"><i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Auto-Close</span>`
+            : r.sincronizado_offline
+              ? `<span class="inline-flex items-center gap-1 text-[11px] text-amber-400 font-semibold" title="Salvo offline na contingência LittleFS"><i data-lucide="cloud-off" class="w-3.5 h-3.5"></i> Fila Offline</span>`
+              : `<span class="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-semibold"><i data-lucide="wifi" class="w-3.5 h-3.5"></i> Ao Vivo</span>`;
+
+          const origemIcon = r.origem === 'rfid' 
+            ? `<span class="inline-flex items-center gap-1.5 text-teal-400 font-medium"><i data-lucide="contact" class="w-3.5 h-3.5"></i> RFID</span>`
+            : `<span class="inline-flex items-center gap-1.5 text-purple-400 font-medium"><i data-lucide="hash" class="w-3.5 h-3.5"></i> Teclado</span>`;
+
+          return `
+            <tr class="hover:bg-slate-800/40 transition-colors">
+              <td class="px-4 py-3 font-mono text-slate-200">${hora} <span class="text-[10px] text-slate-500 font-sans">${data}</span></td>
+              <td class="px-4 py-3 font-semibold text-white">${r.nome}</td>
+              <td class="px-4 py-3">${tipoBadge}</td>
+              <td class="px-4 py-3">${origemIcon}</td>
+              <td class="px-4 py-3 font-mono text-slate-400 text-xs">${r.tag_id}</td>
+              <td class="px-4 py-3 text-center">${modoBadge}</td>
+            </tr>
+          `;
+        }).join('');
+
+        lucide.createIcons();
+      } catch (e) {
+        console.error('Falha ao carregar feed', e);
+      }
+    }
+
+    // =========================================================================
+    // MODAL DE CADASTRO
+    // =========================================================================
+    function abrirModalNovoUsuario() {
+      const token = localStorage.getItem('ponto_token');
+      if (!token) {
+        abrirModalLogin();
+        return;
+      }
+      document.getElementById('modalNovoUsuario').classList.remove('hidden');
+      document.getElementById('msgTagCapturada').classList.add('hidden');
+      lucide.createIcons();
+    }
+
+    function fecharModalNovoUsuario() {
+      document.getElementById('modalNovoUsuario').classList.add('hidden');
+      document.getElementById('formNovoUsuario').reset();
+      document.getElementById('msgTagCapturada').classList.add('hidden');
+    }
+
+    async function capturarUltimaTag() {
+      try {
+        const res = await fetch('/api/captura-tag');
+        const data = await res.json();
+        const msg = document.getElementById('msgTagCapturada');
+        if (data.disponivel) {
+          document.getElementById('cadTag').value = data.tagId;
+          msg.textContent = `✓ Tag ${data.tagId} capturada (${data.hora})`;
+          msg.classList.remove('hidden');
+          showToast(`Tag ${data.tagId} capturada com sucesso!`, 'success');
+        } else {
+          showToast('Nenhuma tag lida nos últimos 15s. Aproxime o cartão no ESP32.', 'info');
+        }
+      } catch (e) {
+        showToast('Falha ao consultar leitor do ESP32', 'error');
+      }
+    }
+
+    async function salvarNovoUsuario(e) {
+      e.preventDefault();
+      const token = localStorage.getItem('ponto_token');
+      if (!token) {
+        showToast('Sessão expirada. Faça login novamente.', 'error');
+        fecharModalNovoUsuario();
+        abrirModalLogin();
+        return;
+      }
+
+      const payload = {
+        nome: document.getElementById('cadNome').value,
+        matricula: document.getElementById('cadMatricula').value,
+        setor: document.getElementById('cadSetor').value,
+        cargo: document.getElementById('cadCargo').value,
+        tag_rfid: document.getElementById('cadTag').value || null,
+        senha: document.getElementById('cadSenha').value || null,
+        email: document.getElementById('cadEmail').value || null,
+        nivel_permissao: document.getElementById('cadNivel').value
+      };
+
+      try {
+        const res = await fetch('/api/usuarios', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast('Erro: ' + (data.erro || 'Falha ao cadastrar'), 'error');
+          return;
+        }
+
+        fecharModalNovoUsuario();
+        carregarDadosDashboard(true);
+        showToast(`Colaborador ${data.nome} cadastrado com sucesso!`, 'success');
+      } catch (err) {
+        showToast('Erro ao comunicar com o servidor', 'error');
+      }
+    }
+  </script>
+</body>
+</html>
