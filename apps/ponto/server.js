@@ -146,10 +146,11 @@ app.use(express.json({ limit: '100kb' })); // Limita tamanho do body contra DoS
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Rate Limiter contra Força Bruta no Login (Máximo 5 tentativas a cada 15 minutos por IP)
+// Rate Limiter contra Força Bruta no Login (Máximo 20 falhas a cada 15 minutos por IP; logins corretos não contam)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 20,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   message: { erro: 'Muitas tentativas de login incorretas. Por segurança, tente novamente em 15 minutos.' }
@@ -723,9 +724,9 @@ app.get('/api/usuarios', middlewareVerificarAdmin, async (req, res) => {
     const client = await pool.connect();
     try {
       const result = await client.query(`
-        SELECT id, matricula, nome, tag_rfid, cargo, setor, email, nivel_permissao, ativo, criado_em
+        SELECT id, matricula, nome, tag_rfid, senha, cargo, setor, email, nivel_permissao, ativo, criado_em
         FROM ponto_usuarios
-        ORDER BY nome ASC;
+        ORDER BY ativo DESC, nome ASC;
       `);
       return res.status(200).json(result.rows);
     } finally {
@@ -744,11 +745,10 @@ app.post('/api/usuarios', middlewareVerificarAdmin, async (req, res) => {
       return res.status(400).json({ erro: 'Matrícula e nome são obrigatórios' });
     }
 
-    const tagLimpa = tag_rfid ? String(tag_rfid).trim().toUpperCase() : null;
+    const tagLimpa = tag_rfid && String(tag_rfid).trim() !== '' ? String(tag_rfid).trim().toUpperCase() : null;
     const nivelFinal = (nivel_permissao === 'ADMIN') ? 'ADMIN' : 'OPERADOR';
-    const emailLimpo = email ? String(email).trim().toLowerCase() : null;
+    const emailLimpo = email && String(email).trim() !== '' ? String(email).trim().toLowerCase() : null;
 
-    // Se informou senha web, gera hash bcrypt seguro
     let hashSenhaWeb = null;
     if (senha_web && senha_web.length > 0) {
       const salt = await bcrypt.genSalt(10);
@@ -761,14 +761,14 @@ app.post('/api/usuarios', middlewareVerificarAdmin, async (req, res) => {
         INSERT INTO ponto_usuarios 
         (matricula, nome, tag_rfid, senha, cargo, setor, email, senha_web, nivel_permissao)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING id, matricula, nome, cargo, setor, email, nivel_permissao;
+        RETURNING id, matricula, nome, tag_rfid, cargo, setor, email, nivel_permissao, ativo;
       `, [
-        matricula,
-        nome,
+        matricula.trim(),
+        nome.trim(),
         tagLimpa,
-        senha || null,
-        cargo || null,
-        setor || 'MonteBot',
+        senha ? String(senha).trim() : null,
+        cargo ? cargo.trim() : null,
+        setor ? setor.trim() : 'MonteBot',
         emailLimpo,
         hashSenhaWeb,
         nivelFinal
@@ -791,43 +791,59 @@ app.put('/api/usuarios/:id', middlewareVerificarAdmin, async (req, res) => {
 
     const client = await pool.connect();
     try {
-      let query = `
-        UPDATE ponto_usuarios 
-        SET matricula = COALESCE($1, matricula),
-            nome = COALESCE($2, nome),
-            tag_rfid = COALESCE($3, tag_rfid),
-            cargo = COALESCE($4, cargo),
-            setor = COALESCE($5, setor),
-            email = COALESCE($6, email),
-            nivel_permissao = COALESCE($7, nivel_permissao),
-            ativo = COALESCE($8, ativo)
-      `;
-      const params = [
-        matricula || null,
-        nome || null,
-        tag_rfid ? String(tag_rfid).trim().toUpperCase() : null,
-        cargo || null,
-        setor || null,
-        email ? String(email).trim().toLowerCase() : null,
-        nivel_permissao || null,
-        typeof ativo === 'boolean' ? ativo : null
-      ];
+      const updates = [];
+      const params = [];
+      let idx = 1;
 
-      let paramIdx = 9;
-      if (senha) {
-        query += `, senha = $${paramIdx}`;
-        params.push(senha);
-        paramIdx++;
+      if (matricula !== undefined) {
+        updates.push(`matricula = $${idx++}`);
+        params.push(matricula.trim());
       }
-      if (senha_web && senha_web.length > 0) {
-        const hash = await bcrypt.hash(senha_web, 10);
-        query += `, senha_web = $${paramIdx}`;
+      if (nome !== undefined) {
+        updates.push(`nome = $${idx++}`);
+        params.push(nome.trim());
+      }
+      if (tag_rfid !== undefined) {
+        const tag = tag_rfid && String(tag_rfid).trim() !== '' ? String(tag_rfid).trim().toUpperCase() : null;
+        updates.push(`tag_rfid = $${idx++}`);
+        params.push(tag);
+      }
+      if (cargo !== undefined) {
+        updates.push(`cargo = $${idx++}`);
+        params.push(cargo ? cargo.trim() : null);
+      }
+      if (setor !== undefined) {
+        updates.push(`setor = $${idx++}`);
+        params.push(setor ? setor.trim() : 'MonteBot');
+      }
+      if (email !== undefined) {
+        updates.push(`email = $${idx++}`);
+        params.push(email && String(email).trim() !== '' ? String(email).trim().toLowerCase() : null);
+      }
+      if (nivel_permissao !== undefined) {
+        updates.push(`nivel_permissao = $${idx++}`);
+        params.push(nivel_permissao === 'ADMIN' ? 'ADMIN' : 'OPERADOR');
+      }
+      if (ativo !== undefined) {
+        updates.push(`ativo = $${idx++}`);
+        params.push(Boolean(ativo));
+      }
+      if (senha !== undefined) {
+        updates.push(`senha = $${idx++}`);
+        params.push(senha && String(senha).trim() !== '' ? String(senha).trim() : null);
+      }
+      if (senha_web !== undefined && String(senha_web).trim() !== '') {
+        const hash = await bcrypt.hash(String(senha_web).trim(), 10);
+        updates.push(`senha_web = $${idx++}`);
         params.push(hash);
-        paramIdx++;
       }
 
-      query += ` WHERE id = $${paramIdx} RETURNING id, matricula, nome, cargo, setor, email, nivel_permissao, ativo;`;
+      if (updates.length === 0) {
+        return res.status(400).json({ erro: 'Nenhum campo fornecido para atualização' });
+      }
+
       params.push(id);
+      const query = `UPDATE ponto_usuarios SET ${updates.join(', ')} WHERE id = $${idx} RETURNING id, matricula, nome, tag_rfid, cargo, setor, email, nivel_permissao, ativo;`;
 
       const result = await client.query(query, params);
       if (result.rows.length === 0) {
@@ -840,26 +856,54 @@ app.put('/api/usuarios/:id', middlewareVerificarAdmin, async (req, res) => {
     }
   } catch (err) {
     console.error('[ERRO EDITAR USUARIO]', err);
-    return res.status(500).json({ erro: 'Erro ao atualizar colaborador' });
+    return res.status(500).json({ erro: 'Erro ao atualizar colaborador (verifique matrícula, email ou tag duplicada)' });
+  }
+});
+
+app.post('/api/usuarios/:id/reativar', middlewareVerificarAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const client = await pool.connect();
+    try {
+      const result = await client.query('UPDATE ponto_usuarios SET ativo = TRUE WHERE id = $1 RETURNING id, nome;', [id]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ erro: 'Colaborador não encontrado' });
+      }
+      return res.status(200).json({ sucesso: true, mensagem: `Colaborador ${result.rows[0].nome} reativado com sucesso` });
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('[ERRO REATIVAR USUARIO]', err);
+    return res.status(500).json({ erro: 'Erro ao reativar colaborador' });
   }
 });
 
 app.delete('/api/usuarios/:id', middlewareVerificarAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const permanente = req.query.permanente === 'true';
     const client = await pool.connect();
     try {
-      const result = await client.query('UPDATE ponto_usuarios SET ativo = FALSE WHERE id = $1 RETURNING id, nome;', [id]);
-      if (result.rows.length === 0) {
-        return res.status(404).json({ erro: 'Colaborador não encontrado' });
+      if (permanente) {
+        const result = await client.query('DELETE FROM ponto_usuarios WHERE id = $1 RETURNING id, nome;', [id]);
+        if (result.rows.length === 0) {
+          return res.status(404).json({ erro: 'Colaborador não encontrado' });
+        }
+        return res.status(200).json({ sucesso: true, mensagem: `Colaborador ${result.rows[0].nome} excluído permanentemente` });
+      } else {
+        const result = await client.query('UPDATE ponto_usuarios SET ativo = FALSE WHERE id = $1 RETURNING id, nome;', [id]);
+        if (result.rows.length === 0) {
+          return res.status(404).json({ erro: 'Colaborador não encontrado' });
+        }
+        return res.status(200).json({ sucesso: true, mensagem: `Colaborador ${result.rows[0].nome} desativado com sucesso` });
       }
-      return res.status(200).json({ sucesso: true, mensagem: `Colaborador ${result.rows[0].nome} desativado com sucesso` });
     } finally {
       client.release();
     }
   } catch (err) {
-    console.error('[ERRO DESATIVAR USUARIO]', err);
-    return res.status(500).json({ erro: 'Erro ao desativar colaborador' });
+    console.error('[ERRO EXCLUIR USUARIO]', err);
+    return res.status(500).json({ erro: 'Erro ao processar exclusão/desativação do colaborador' });
   }
 });
 

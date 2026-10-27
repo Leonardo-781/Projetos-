@@ -161,9 +161,16 @@
         </div>
 
         <div id="areaLoginAutenticado" class="hidden flex items-center gap-2">
-          <button onclick="abrirModalNovoUsuario()" class="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+          <!-- Botão Gerenciar Equipe & Tags -->
+          <button onclick="abrirModalGestaoEquipe()" class="flex items-center gap-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white border border-white/[0.1] font-semibold px-3 py-2 rounded-xl text-xs transition-all shadow-sm active:scale-95" title="Painel de Gestão da Equipe, Troca de Tags e Permissões">
+            <i data-lucide="users" class="w-4 h-4 text-cyan-400"></i>
+            <span class="hidden sm:inline">Gerenciar Equipe</span>
+          </button>
+
+          <!-- Botão Novo Colaborador -->
+          <button onclick="abrirModalNovoUsuario()" class="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
             <i data-lucide="user-plus" class="w-4 h-4"></i>
-            <span class="hidden sm:inline">Novo Colaborador</span>
+            <span class="hidden sm:inline">Novo</span>
           </button>
           
           <div class="flex items-center gap-2 pl-2 border-l border-white/[0.08]">
@@ -317,11 +324,12 @@
               <th class="px-4 py-3.5 font-mono">Horas no Dia</th>
               <th class="px-4 py-3.5 text-center">Status</th>
               <th class="px-4 py-3.5 text-center">Alerta / Obs</th>
+              <th class="px-4 py-3.5 text-right">Ação</th>
             </tr>
           </thead>
           <tbody id="tabelaEspelhoCorpo" class="divide-y divide-white/[0.04]">
             <tr>
-              <td colspan="7" class="px-4 py-8 text-center text-slate-500">Carregando dados...</td>
+              <td colspan="8" class="px-4 py-8 text-center text-slate-500">Carregando dados...</td>
             </tr>
           </tbody>
         </table>
@@ -387,7 +395,7 @@
       <form id="formLogin" onsubmit="realizarLogin(event)" class="space-y-4 text-xs">
         <div>
           <label class="block text-slate-400 mb-1.5 font-medium">E-mail do Administrador</label>
-          <input type="email" id="loginEmail" required placeholder="cardosoleonardo1327@gmail.com" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+          <input type="email" id="loginEmail" required placeholder="gestor@montebot.com.br" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
         </div>
         <div>
           <label class="block text-slate-400 mb-1.5 font-medium">Senha de Acesso</label>
@@ -485,6 +493,245 @@
     </div>
   </div>
 
+  <!-- MODAL: GESTÃO COMPLETA DA EQUIPE -->
+  <div id="modalGestaoEquipe" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 transition-all">
+    <div class="bg-slate-900 border border-white/[0.1] rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Header do Modal -->
+      <div class="p-6 border-b border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center border border-cyan-500/20 shadow-md">
+            <i data-lucide="users" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              Gestão de Colaboradores & Tags
+              <span id="badgeTotalEquipeGestao" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">0 membros</span>
+            </h3>
+            <p class="text-xs text-slate-400">Edite nomes, associe novas tags RFID, redefina senhas ou remova membros da equipe</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2.5">
+          <button onclick="abrirModalNovoUsuario()" class="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            <span>Novo</span>
+          </button>
+          <button onclick="fecharModalGestaoEquipe()" class="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-all">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros e Busca Rápida -->
+      <div class="px-6 py-3 border-b border-white/[0.06] bg-slate-950/40 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div class="relative flex-1 min-w-[220px]">
+          <input type="text" id="buscaEquipeGestao" oninput="filtrarEquipeGestao()" placeholder="Buscar por nome, matrícula, setor ou tag..." class="w-full bg-slate-900 border border-white/[0.08] focus:border-cyan-500/60 text-xs text-slate-200 placeholder-slate-500 rounded-xl pl-9 pr-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all">
+          <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+        </div>
+        
+        <div class="flex items-center gap-1.5 text-xs text-slate-400">
+          <button onclick="filtrarStatusEquipe('todos')" id="filtroEquipe_todos" class="px-2.5 py-1 rounded-lg font-medium bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">Todos</button>
+          <button onclick="filtrarStatusEquipe('ativos')" id="filtroEquipe_ativos" class="px-2.5 py-1 rounded-lg font-medium hover:bg-slate-800 text-slate-400">Ativos</button>
+          <button onclick="filtrarStatusEquipe('inativos')" id="filtroEquipe_inativos" class="px-2.5 py-1 rounded-lg font-medium hover:bg-slate-800 text-slate-400">Inativos</button>
+          <button onclick="filtrarStatusEquipe('semtag')" id="filtroEquipe_semtag" class="px-2.5 py-1 rounded-lg font-medium hover:bg-slate-800 text-slate-400">Sem Tag</button>
+        </div>
+      </div>
+
+      <!-- Tabela com Scroll -->
+      <div class="p-6 overflow-y-auto flex-1">
+        <div class="overflow-x-auto rounded-2xl border border-white/[0.06]">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-950/80 text-slate-400 uppercase tracking-wider font-semibold border-b border-white/[0.08] sticky top-0 backdrop-blur z-10">
+              <tr>
+                <th class="px-4 py-3">Colaborador</th>
+                <th class="px-4 py-3">Setor & Cargo</th>
+                <th class="px-4 py-3 font-mono">Tag RFID</th>
+                <th class="px-4 py-3 text-center">Permissão</th>
+                <th class="px-4 py-3 text-center">Status</th>
+                <th class="px-4 py-3 text-right">Ações de Gestão</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaGestaoCorpo" class="divide-y divide-white/[0.04]">
+              <tr>
+                <td colspan="6" class="px-4 py-8 text-center text-slate-500">Carregando colaboradores...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Rodapé do Modal -->
+      <div class="p-4 border-t border-white/[0.08] bg-slate-950/40 flex justify-between items-center text-xs text-slate-400 shrink-0">
+        <div class="flex items-center gap-2">
+          <i data-lucide="info" class="w-4 h-4 text-cyan-400"></i>
+          <span>Clique em <b>Trocar Tag</b> para capturar instantaneamente a tag encostada no leitor ESP32.</span>
+        </div>
+        <button onclick="fecharModalGestaoEquipe()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition-all">Fechar</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR COLABORADOR (NOME, TAG, SENHA, PERMISSÕES, EXCLUSÃO) -->
+  <div id="modalEditarUsuario" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 transition-all">
+    <div class="bg-slate-900 border border-white/[0.1] rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+      
+      <div class="flex items-center justify-between border-b border-white/[0.08] pb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+            <i data-lucide="user-cog" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Editar Colaborador</h3>
+            <p class="text-[11px] text-slate-400">Atualize dados cadastrais, troque a tag ou redefina senhas</p>
+          </div>
+        </div>
+        <button onclick="fecharModalEditarUsuario()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-all">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="formEditarUsuario" onsubmit="salvarEdicaoUsuario(event)" class="space-y-4 text-xs">
+        <input type="hidden" id="editUserId">
+
+        <div>
+          <label class="block text-slate-400 mb-1.5 font-medium">Nome Completo</label>
+          <input type="text" id="editNome" required placeholder="Nome do colaborador" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3.5">
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">Matrícula</label>
+            <input type="text" id="editMatricula" required placeholder="Ex: STI001" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">Setor</label>
+            <input type="text" id="editSetor" placeholder="Ex: MonteBot / STI" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3.5">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-slate-400 font-medium">Tag RFID (Hex)</label>
+              <div class="flex items-center gap-1">
+                <button type="button" onclick="capturarTagParaEdicao()" class="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-0.5 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30 transition-all" title="Capturar tag aproximada no leitor ESP32">
+                  <i data-lucide="zap" class="w-3 h-3"></i> <span>Capturar</span>
+                </button>
+                <button type="button" onclick="limparTagEdicao()" class="text-[10px] text-rose-400 hover:text-rose-300 font-medium px-1 py-0.5 rounded transition-all" title="Remover tag">
+                  Limpar
+                </button>
+              </div>
+            </div>
+            <input type="text" id="editTag" placeholder="Sem tag vinculada" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white font-mono uppercase placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+            <span id="msgTagEditCapturada" class="text-[10px] text-emerald-400 hidden mt-1 block font-medium"></span>
+          </div>
+
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">Senha Numérica (Teclado)</label>
+            <input type="password" id="editSenhaTeclado" maxlength="8" placeholder="•••• (deixe vazio p/ manter)" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3.5">
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">Cargo</label>
+            <input type="text" id="editCargo" placeholder="Ex: Bolsista / Desenvolvedor" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">Nível de Permissão</label>
+            <select id="editNivel" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition-all">
+              <option value="OPERADOR">OPERADOR (Colaborador Padrão)</option>
+              <option value="ADMIN">ADMIN (Pode gerenciar equipe)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3.5">
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">E-mail Web</label>
+            <input type="email" id="editEmail" placeholder="gestor@montebot.com.br" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">Nova Senha Web</label>
+            <input type="password" id="editSenhaWeb" placeholder="Deixe em branco p/ manter" class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-all font-mono">
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 pt-1">
+          <input type="checkbox" id="editAtivo" class="w-4 h-4 rounded bg-slate-950 border-white/[0.2] text-emerald-500 focus:ring-emerald-500/20 cursor-pointer">
+          <label for="editAtivo" class="text-slate-300 font-medium cursor-pointer">Colaborador Ativo (Pode bater ponto no totem ESP32)</label>
+        </div>
+
+        <div class="flex items-center justify-between pt-3 border-t border-white/[0.08]">
+          <button type="button" onclick="excluirColaboradorAtual()" class="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-semibold transition-all flex items-center gap-1.5">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>Excluir</span>
+          </button>
+          
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="fecharModalEditarUsuario()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition-all">Cancelar</button>
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold shadow-lg shadow-emerald-500/20 transition-all active:scale-95">Salvar Alterações</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TROCA RÁPIDA DE TAG RFID -->
+  <div id="modalTrocarTagRapido" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 transition-all">
+    <div class="bg-slate-900 border border-white/[0.1] rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+      
+      <div class="flex items-center justify-between border-b border-white/[0.08] pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center border border-cyan-500/20">
+            <i data-lucide="credit-card" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Trocar Tag RFID</h3>
+            <p id="trocaTagNomeUsuario" class="text-[11px] text-slate-400 truncate max-w-[200px]">Colaborador</p>
+          </div>
+        </div>
+        <button onclick="fecharModalTrocarTagRapido()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-all">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <input type="hidden" id="trocaTagUserId">
+
+      <div class="space-y-3.5 text-xs">
+        <div class="bg-slate-950/60 p-3 rounded-xl border border-white/[0.06] flex items-center justify-between">
+          <span class="text-slate-400">Tag Atual:</span>
+          <span id="trocaTagAtualBadge" class="font-mono font-bold text-slate-200">--</span>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1.5 font-medium">Nova Tag RFID (Hex)</label>
+          <input type="text" id="trocaTagNovaInput" placeholder="Aproxime no ESP32 ou digite..." class="w-full bg-slate-950 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-white font-mono uppercase placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-all">
+        </div>
+
+        <!-- Botão Capturar do Totem -->
+        <button type="button" onclick="capturarTagParaTrocaRapida()" class="w-full py-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30 transition-all flex items-center justify-center gap-2 active:scale-95">
+          <i data-lucide="zap" class="w-4 h-4 text-cyan-400"></i>
+          <span>Capturar Cartão Encostado no ESP32</span>
+        </button>
+
+        <div class="flex items-center justify-between pt-2 border-t border-white/[0.08]">
+          <button type="button" onclick="salvarTrocaTagRapida(true)" class="text-rose-400 hover:text-rose-300 font-medium text-xs">
+            Desvincular Tag
+          </button>
+          
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="fecharModalTrocarTagRapido()" class="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700 transition-all">Cancelar</button>
+            <button type="button" onclick="salvarTrocaTagRapida(false)" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold shadow-lg shadow-emerald-500/20 transition-all active:scale-95">Salvar Tag</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- TOAST CONTAINER -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
 
@@ -492,6 +739,9 @@
   <script>
     let dadosEspelhoCache = [];
     let modoVisualizacao = 'cards'; // 'cards' | 'tabela'
+    let ehAdminLogado = false;
+    let cacheEquipeGestao = [];
+    let filtroStatusEquipeAtual = 'todos';
 
     document.addEventListener('DOMContentLoaded', () => {
       const hoje = new Date().toISOString().slice(0, 10);
@@ -604,16 +854,20 @@
     }
 
     function mostrarEstadoLogado(nome) {
+      ehAdminLogado = true;
       document.getElementById('areaLoginNaoAutenticado').classList.add('hidden');
       document.getElementById('areaLoginAutenticado').classList.remove('hidden');
       document.getElementById('nomeUsuarioLogado').textContent = nome;
       lucide.createIcons();
+      filtrarTabela();
     }
 
     function mostrarEstadoNaoLogado() {
+      ehAdminLogado = false;
       document.getElementById('areaLoginNaoAutenticado').classList.remove('hidden');
       document.getElementById('areaLoginAutenticado').classList.add('hidden');
       lucide.createIcons();
+      filtrarTabela();
     }
 
     function abrirModalLogin() {
@@ -705,7 +959,6 @@
       }
     }
 
-    // Gerador de iniciais para avatar
     function obterIniciais(nome) {
       if (!nome) return 'MB';
       const partes = nome.trim().split(' ');
@@ -764,6 +1017,12 @@
              </div>`
           : '';
 
+        const botaoEditarAdmin = ehAdminLogado
+          ? `<button onclick="abrirModalEditarUsuario(${u.id})" class="p-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-cyan-400 border border-white/[0.08] transition-all" title="Editar dados e tag de ${u.nome}">
+               <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+             </button>`
+          : '';
+
         return `
           <div class="glass-card p-5 rounded-2xl border ${statusBorder} hover:border-white/[0.15] transition-all duration-200 flex flex-col justify-between">
             <div>
@@ -782,7 +1041,10 @@
                     </div>
                   </div>
                 </div>
-                ${statusTag}
+                <div class="flex items-center gap-1.5">
+                  ${statusTag}
+                  ${botaoEditarAdmin}
+                </div>
               </div>
 
               <!-- Batidas do Dia (Horários) -->
@@ -817,7 +1079,7 @@
     function renderizarTabela(lista) {
       const corpo = document.getElementById('tabelaEspelhoCorpo');
       if (lista.length === 0) {
-        corpo.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">Nenhum colaborador encontrado.</td></tr>`;
+        corpo.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-slate-500">Nenhum colaborador encontrado.</td></tr>`;
         return;
       }
 
@@ -835,6 +1097,10 @@
           ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30"><i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Fechamento Auto</span>`
           : `<span class="text-slate-600 text-xs">--</span>`;
 
+        const acaoBtn = ehAdminLogado
+          ? `<button onclick="abrirModalEditarUsuario(${u.id})" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 hover:text-white border border-white/[0.08] text-[11px] font-semibold transition-all inline-flex items-center gap-1"><i data-lucide="pencil" class="w-3 h-3"></i> Editar</button>`
+          : `<span class="text-slate-600 text-xs">--</span>`;
+
         return `
           <tr class="hover:bg-slate-800/40 transition-colors">
             <td class="px-4 py-3.5 font-semibold text-white">
@@ -850,6 +1116,7 @@
             <td class="px-4 py-3.5 font-mono text-white text-sm font-extrabold">${u.horasFormatadas}</td>
             <td class="px-4 py-3.5 text-center">${statusBadge}</td>
             <td class="px-4 py-3.5 text-center">${autoCloseBadge}</td>
+            <td class="px-4 py-3.5 text-right">${acaoBtn}</td>
           </tr>
         `;
       }).join('');
@@ -1004,7 +1271,393 @@
         fecharModalNovoUsuario();
         carregarDadosDashboard(true);
         showToast(`Colaborador ${data.nome} cadastrado com sucesso!`, 'success');
+        if (!document.getElementById('modalGestaoEquipe').classList.contains('hidden')) {
+          carregarEquipeGestao();
+        }
       } catch (err) {
+        showToast('Erro ao comunicar com o servidor', 'error');
+      }
+    }
+
+    // =========================================================================
+    // MODAL DE GESTÃO DA EQUIPE
+    // =========================================================================
+    async function abrirModalGestaoEquipe() {
+      const token = localStorage.getItem('ponto_token');
+      if (!token) {
+        abrirModalLogin();
+        return;
+      }
+      document.getElementById('modalGestaoEquipe').classList.remove('hidden');
+      await carregarEquipeGestao();
+      lucide.createIcons();
+    }
+
+    function fecharModalGestaoEquipe() {
+      document.getElementById('modalGestaoEquipe').classList.add('hidden');
+    }
+
+    async function carregarEquipeGestao() {
+      const token = localStorage.getItem('ponto_token');
+      if (!token) return;
+
+      try {
+        const res = await fetch('/api/usuarios', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) throw new Error('Falha ao buscar equipe');
+        cacheEquipeGestao = await res.json();
+        document.getElementById('badgeTotalEquipeGestao').textContent = `${cacheEquipeGestao.length} membros`;
+        filtrarEquipeGestao();
+      } catch (e) {
+        showToast('Erro ao listar equipe de colaboradores', 'error');
+      }
+    }
+
+    function filtrarStatusEquipe(status) {
+      filtroStatusEquipeAtual = status;
+      ['todos', 'ativos', 'inativos', 'semtag'].forEach(s => {
+        const btn = document.getElementById(`filtroEquipe_${s}`);
+        if (!btn) return;
+        if (s === status) {
+          btn.className = 'px-2.5 py-1 rounded-lg font-medium bg-cyan-500/20 text-cyan-400 border border-cyan-500/30';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded-lg font-medium hover:bg-slate-800 text-slate-400';
+        }
+      });
+      filtrarEquipeGestao();
+    }
+
+    function filtrarEquipeGestao() {
+      const termo = (document.getElementById('buscaEquipeGestao')?.value || '').toLowerCase();
+      const filtrados = cacheEquipeGestao.filter(u => {
+        const bateTermo = u.nome.toLowerCase().includes(termo) ||
+          u.matricula.toLowerCase().includes(termo) ||
+          (u.setor && u.setor.toLowerCase().includes(termo)) ||
+          (u.tag_rfid && u.tag_rfid.toLowerCase().includes(termo));
+        
+        if (!bateTermo) return false;
+
+        if (filtroStatusEquipeAtual === 'ativos') return u.ativo === true;
+        if (filtroStatusEquipeAtual === 'inativos') return u.ativo === false;
+        if (filtroStatusEquipeAtual === 'semtag') return !u.tag_rfid || u.tag_rfid.trim() === '';
+        return true;
+      });
+
+      renderizarTabelaGestaoEquipe(filtrados);
+    }
+
+    function renderizarTabelaGestaoEquipe(lista) {
+      const corpo = document.getElementById('tabelaGestaoCorpo');
+      if (!corpo) return;
+
+      if (lista.length === 0) {
+        corpo.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Nenhum colaborador encontrado para os filtros selecionados.</td></tr>`;
+        return;
+      }
+
+      corpo.innerHTML = lista.map(u => {
+        const iniciais = obterIniciais(u.nome);
+        const tagBadge = u.tag_rfid 
+          ? `<span class="font-mono text-cyan-400 font-bold bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-md text-[11px]">${u.tag_rfid}</span>`
+          : `<span class="text-slate-500 italic text-[11px]">Sem Tag</span>`;
+
+        const statusBadge = u.ativo
+          ? `<span class="inline-flex items-center gap-1 text-emerald-400 font-semibold text-[11px]"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Ativo</span>`
+          : `<span class="inline-flex items-center gap-1 text-slate-500 font-medium text-[11px]"><span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span> Inativo</span>`;
+
+        const nivelBadge = u.nivel_permissao === 'ADMIN'
+          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/20">ADMIN</span>`
+          : `<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-400">OPERADOR</span>`;
+
+        const btnAlternarStatus = u.ativo
+          ? `<button onclick="alternarStatusUsuario(${u.id}, true, '${u.nome.replace(/'/g, "\\'")}')" class="p-1.5 rounded-lg bg-slate-800/80 hover:bg-amber-500/20 text-slate-400 hover:text-amber-400 border border-white/[0.06] transition-all" title="Desativar colaborador"><i data-lucide="user-x" class="w-3.5 h-3.5"></i></button>`
+          : `<button onclick="alternarStatusUsuario(${u.id}, false, '${u.nome.replace(/'/g, "\\'")}')" class="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-all" title="Reativar colaborador"><i data-lucide="user-check" class="w-3.5 h-3.5"></i></button>`;
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition-colors ${!u.ativo ? 'opacity-60' : ''}">
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-xs text-slate-300">
+                  ${iniciais}
+                </div>
+                <div>
+                  <div class="font-bold text-white text-xs leading-tight">${u.nome}</div>
+                  <div class="text-[10px] font-mono text-slate-400">${u.matricula}</div>
+                </div>
+              </div>
+            </td>
+            <td class="px-4 py-3 text-slate-300">
+              <div>${u.setor || 'MonteBot'}</div>
+              <div class="text-[10px] text-slate-500">${u.cargo || '--'}</div>
+            </td>
+            <td class="px-4 py-3 font-mono">
+              <div class="flex items-center gap-1.5">
+                ${tagBadge}
+                <button onclick="abrirTrocaTagRapida(${u.id}, '${u.nome.replace(/'/g, "\\'")}', '${u.tag_rfid || ''}')" class="text-[10px] text-cyan-400 hover:text-cyan-300 font-bold bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 px-1.5 py-0.5 rounded transition-all flex items-center gap-0.5" title="Trocar tag com leitor ESP32">
+                  <i data-lucide="zap" class="w-3 h-3"></i> <span>Trocar</span>
+                </button>
+              </div>
+            </td>
+            <td class="px-4 py-3 text-center">${nivelBadge}</td>
+            <td class="px-4 py-3 text-center">${statusBadge}</td>
+            <td class="px-4 py-3 text-right">
+              <div class="flex items-center justify-end gap-1.5">
+                <button onclick="abrirModalEditarUsuario(${u.id})" class="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/[0.06] transition-all flex items-center gap-1 text-[11px] font-medium" title="Editar dados completos">
+                  <i data-lucide="edit" class="w-3.5 h-3.5 text-cyan-400"></i>
+                  <span class="hidden md:inline">Editar</span>
+                </button>
+                ${btnAlternarStatus}
+                <button onclick="excluirUsuario(${u.id}, '${u.nome.replace(/'/g, "\\'")}')" class="p-1.5 rounded-lg bg-slate-800/80 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-white/[0.06] transition-all" title="Excluir permanentemente">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    // =========================================================================
+    // MODAL DE EDIÇÃO COMPLETA
+    // =========================================================================
+    function abrirModalEditarUsuario(id) {
+      const u = cacheEquipeGestao.find(x => x.id === id) || dadosEspelhoCache.find(x => x.id === id);
+      if (!u) {
+        showToast('Colaborador não encontrado', 'error');
+        return;
+      }
+
+      document.getElementById('editUserId').value = u.id;
+      document.getElementById('editNome').value = u.nome || '';
+      document.getElementById('editMatricula').value = u.matricula || '';
+      document.getElementById('editSetor').value = u.setor || 'MonteBot';
+      document.getElementById('editCargo').value = u.cargo || '';
+      document.getElementById('editTag').value = u.tag_rfid || '';
+      document.getElementById('editSenhaTeclado').value = '';
+      document.getElementById('editEmail').value = u.email || '';
+      document.getElementById('editSenhaWeb').value = '';
+      document.getElementById('editNivel').value = u.nivel_permissao || u.nivel || 'OPERADOR';
+      document.getElementById('editAtivo').checked = (u.ativo !== false);
+      document.getElementById('msgTagEditCapturada').classList.add('hidden');
+
+      document.getElementById('modalEditarUsuario').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function fecharModalEditarUsuario() {
+      document.getElementById('modalEditarUsuario').classList.add('hidden');
+      document.getElementById('formEditarUsuario').reset();
+    }
+
+    async function capturarTagParaEdicao() {
+      try {
+        const res = await fetch('/api/captura-tag');
+        const data = await res.json();
+        const msg = document.getElementById('msgTagEditCapturada');
+        if (data.disponivel) {
+          document.getElementById('editTag').value = data.tagId;
+          msg.textContent = `✓ Tag ${data.tagId} capturada do leitor (${data.hora})`;
+          msg.classList.remove('hidden');
+          showToast(`Tag ${data.tagId} capturada com sucesso!`, 'success');
+        } else {
+          showToast('Nenhuma tag aproximada recentemente. Aproxime o cartão no ESP32.', 'info');
+        }
+      } catch (e) {
+        showToast('Falha ao consultar leitor do ESP32', 'error');
+      }
+    }
+
+    function limparTagEdicao() {
+      document.getElementById('editTag').value = '';
+      document.getElementById('msgTagEditCapturada').classList.add('hidden');
+      showToast('Tag desvinculada (salve para confirmar)', 'info');
+    }
+
+    async function salvarEdicaoUsuario(e) {
+      e.preventDefault();
+      const token = localStorage.getItem('ponto_token');
+      if (!token) {
+        showToast('Sessão expirada. Faça login novamente.', 'error');
+        return;
+      }
+
+      const id = document.getElementById('editUserId').value;
+      const payload = {
+        nome: document.getElementById('editNome').value,
+        matricula: document.getElementById('editMatricula').value,
+        setor: document.getElementById('editSetor').value,
+        cargo: document.getElementById('editCargo').value,
+        tag_rfid: document.getElementById('editTag').value || '',
+        nivel_permissao: document.getElementById('editNivel').value,
+        email: document.getElementById('editEmail').value || null,
+        ativo: document.getElementById('editAtivo').checked
+      };
+
+      const senhaTeclado = document.getElementById('editSenhaTeclado').value;
+      if (senhaTeclado) payload.senha = senhaTeclado;
+
+      const senhaWeb = document.getElementById('editSenhaWeb').value;
+      if (senhaWeb) payload.senha_web = senhaWeb;
+
+      try {
+        const res = await fetch(`/api/usuarios/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          showToast('Erro: ' + (data.erro || 'Falha ao salvar alterações'), 'error');
+          return;
+        }
+
+        fecharModalEditarUsuario();
+        showToast(`Colaborador ${data.nome} atualizado com sucesso!`, 'success');
+        carregarDadosDashboard(true);
+        if (!document.getElementById('modalGestaoEquipe').classList.contains('hidden')) {
+          carregarEquipeGestao();
+        }
+      } catch (err) {
+        showToast('Erro ao comunicar com o servidor', 'error');
+      }
+    }
+
+    function excluirColaboradorAtual() {
+      const id = document.getElementById('editUserId').value;
+      const nome = document.getElementById('editNome').value;
+      excluirUsuario(id, nome);
+    }
+
+    async function alternarStatusUsuario(id, statusAtual, nome) {
+      const token = localStorage.getItem('ponto_token');
+      if (!token) return;
+
+      const acao = statusAtual ? 'desativar' : 'reativar';
+      if (!confirm(`Deseja realmente ${acao} o colaborador "${nome}"?`)) return;
+
+      try {
+        const res = await fetch(`/api/usuarios/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ ativo: !statusAtual })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.erro);
+
+        showToast(`Colaborador ${nome} ${statusAtual ? 'desativado' : 'reativado'} com sucesso!`, 'success');
+        carregarDadosDashboard(false);
+        carregarEquipeGestao();
+      } catch (e) {
+        showToast('Erro ao alterar status do colaborador', 'error');
+      }
+    }
+
+    async function excluirUsuario(id, nome) {
+      const token = localStorage.getItem('ponto_token');
+      if (!token) return;
+
+      if (!confirm(`⚠️ ATENÇÃO: Tem certeza que deseja EXCLUIR DEFINITIVAMENTE o colaborador "${nome}"?\n\nEsta ação apagará permanentemente o colaborador e todo o seu histórico de ponto!`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/usuarios/${id}?permanente=true`, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.erro);
+
+        fecharModalEditarUsuario();
+        showToast(data.mensagem || `Colaborador ${nome} excluído.`, 'success');
+        carregarDadosDashboard(true);
+        if (!document.getElementById('modalGestaoEquipe').classList.contains('hidden')) {
+          carregarEquipeGestao();
+        }
+      } catch (e) {
+        showToast('Falha ao excluir colaborador', 'error');
+      }
+    }
+
+    // =========================================================================
+    // MODAL DE TROCA RÁPIDA DE TAG RFID
+    // =========================================================================
+    function abrirTrocaTagRapida(id, nome, tagAtual) {
+      document.getElementById('trocaTagUserId').value = id;
+      document.getElementById('trocaTagNomeUsuario').textContent = nome;
+      document.getElementById('trocaTagAtualBadge').textContent = tagAtual || 'Sem Tag';
+      document.getElementById('trocaTagNovaInput').value = '';
+      document.getElementById('modalTrocarTagRapido').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function fecharModalTrocarTagRapido() {
+      document.getElementById('modalTrocarTagRapido').classList.add('hidden');
+    }
+
+    async function capturarTagParaTrocaRapida() {
+      try {
+        const res = await fetch('/api/captura-tag');
+        const data = await res.json();
+        if (data.disponivel) {
+          document.getElementById('trocaTagNovaInput').value = data.tagId;
+          showToast(`Tag ${data.tagId} capturada do leitor ESP32!`, 'success');
+        } else {
+          showToast('Nenhuma tag aproximada recentemente. Aproxime o cartão no ESP32.', 'info');
+        }
+      } catch (e) {
+        showToast('Falha ao consultar leitor do ESP32', 'error');
+      }
+    }
+
+    async function salvarTrocaTagRapida(desvincular = false) {
+      const token = localStorage.getItem('ponto_token');
+      if (!token) {
+        showToast('Sessão expirada. Faça login novamente.', 'error');
+        return;
+      }
+
+      const id = document.getElementById('trocaTagUserId').value;
+      const novaTag = desvincular ? '' : document.getElementById('trocaTagNovaInput').value.trim();
+
+      if (!desvincular && !novaTag) {
+        showToast('Digite uma nova tag ou clique em Capturar do ESP32', 'info');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/usuarios/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ tag_rfid: novaTag })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          showToast('Erro: ' + (data.erro || 'Falha ao salvar nova tag'), 'error');
+          return;
+        }
+
+        fecharModalTrocarTagRapido();
+        showToast(desvincular ? 'Tag RFID desvinculada com sucesso!' : `Nova tag ${data.tag_rfid} vinculada com sucesso!`, 'success');
+        carregarDadosDashboard(true);
+        if (!document.getElementById('modalGestaoEquipe').classList.contains('hidden')) {
+          carregarEquipeGestao();
+        }
+      } catch (e) {
         showToast('Erro ao comunicar com o servidor', 'error');
       }
     }
