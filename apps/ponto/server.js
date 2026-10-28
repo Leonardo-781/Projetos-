@@ -342,6 +342,21 @@ setInterval(async () => {
 // ENDPOINTS DO ESP32 (HARDWARE)
 // =========================================================================
 
+// Endpoint de Sincronização de Data e Hora Oficial (Fallback de NTP mesmo sem internet externa)
+app.get('/ponto/hora', (req, res) => {
+  const agora = new Date();
+  const timestamp = Math.floor(agora.getTime() / 1000);
+  return res.status(200).json({
+    sucesso: true,
+    timestamp: timestamp,
+    data: agora.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+    hora: agora.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+    data_hora: agora.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+    timezone: 'America/Sao_Paulo',
+    gmt_offset: -10800
+  });
+});
+
 app.post('/ponto/registro', async (req, res) => {
   try {
     const { tag_id, origem, timestamp } = req.body;
